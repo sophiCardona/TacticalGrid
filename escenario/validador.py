@@ -15,10 +15,10 @@ def _es_numero(x):
 def validar_datos(d):
     """Purpose: revisar todas las reglas del enunciado y devolver TODOS los errores.
     Preconditions: ninguna (acepta cualquier objeto; si no es dict, reporta error).
-    Postconditions: lista vacía sii el escenario es válido. No modifica `d`.
+    Postconditions: lista vacía si el escenario es válido. No modifica `d`.
     Complexity: O(filas*columnas + unidades).
     AI usage: Yes. AI intervention: generó la estructura y las reglas de validación.
-    Student validation: (completar: casos inválidos que probaron)."""
+    Student validation: Se han aprobado las reglas de validacion."""
     e = []
     if not isinstance(d, dict):
         return ["El archivo debe contener un objeto JSON en la raíz."]

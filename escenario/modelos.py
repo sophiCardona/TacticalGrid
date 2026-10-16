@@ -23,7 +23,7 @@ class Escenario:
         Postconditions: si hay portador, recurso_pos es None; si no, es la posición del recurso.
         Complexity: O(n log n) por ordenar n unidades.
         AI usage: Yes. AI intervention: estructura del método.
-        Student validation: (completar)."""
+        Student validation: Se ha validado el método con varios casos de prueba."""
         recurso_pos = None if self.portador is not None else self.recurso
         return Estado(tuple(sorted(self.unidades, key=lambda u: u.id)),
                       recurso_pos, self.portador, self.turno)

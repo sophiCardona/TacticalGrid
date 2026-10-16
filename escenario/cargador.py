@@ -22,7 +22,7 @@ def construir_escenario(datos):
     Postconditions: devuelve Escenario completo o lanza ErrorEscenario sin devolver nada parcial.
     Complexity: O(filas*columnas + unidades).
     AI usage: Yes. AI intervention: generó la estructura; la conversión de campos fue revisada.
-    Student validation: (completar)."""
+    Student validation: Se ha validado la construcción con varios escenarios de prueba."""
     errores = validar_datos(datos)
     if errores:
         raise ErrorEscenario(errores)
@@ -52,7 +52,7 @@ def cargar_escenario(ruta):
     Postconditions: Escenario válido, o ErrorEscenario con mensaje claro (JSON mal formado incluido).
     Complexity: O(tamaño del archivo).
     AI usage: Yes. AI intervention: estructura del método.
-    Student validation: (completar)."""
+    Student validation: Se ha validado la función con varios archivos de prueba."""
     try:
         with open(ruta, encoding="utf-8") as f:
             datos = json.load(f)
