@@ -46,9 +46,12 @@ def contraste(hex_color):
     return "#0d1220" if 0.299 * r + 0.587 * g + 0.114 * b > 140 else "#f2f6ff"
 
 
+COLORES_TERRENO = {"pasto": "#a9e159", "camino": "#66c00b", "bosque": "#419f00"}
+
+
 def colores_terreno(mapa):
-    """Un color por tipo de terreno, derivado del COSTO del JSON (nada fijo por nombre):
-    verde vivo = barato, tierra cálida = caro, pizarra = obstáculo."""
+    """Un color por tipo de terreno: paleta fija para pasto/camino/bosque; el resto se
+    deriva del COSTO del JSON (verde vivo = barato, tierra cálida = caro, pizarra = obstáculo)."""
     costos = [t["costo"] for t in mapa.tipos.values() if t["transitable"]]
     cmin, cmax = min(costos), max(costos)
     a, b = (111, 178, 105), (176, 120, 74)
@@ -56,6 +59,8 @@ def colores_terreno(mapa):
     for nombre, t in mapa.tipos.items():
         if not t["transitable"]:
             res[nombre] = "#333c52"
+        elif nombre in COLORES_TERRENO:
+            res[nombre] = COLORES_TERRENO[nombre]
         else:
             k = 0.0 if cmax == cmin else (t["costo"] - cmin) / (cmax - cmin)
             res[nombre] = _hex(tuple(a[i] + (b[i] - a[i]) * k for i in range(3)))

@@ -10,8 +10,10 @@ from algoritmos.base import ejecutar_algoritmo
 from algoritmos.a_estrella import h_manhattan, h_propia, h_euclidiana
 from verificacion.verificador import verificar_camino
 
-RUTA_CASO3 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "caso3_obstaculo_y_heuristica.json")
-RUTA_CASO4 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "caso4_comparacion_heuristicas.json")
+RUTA_CASO3 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos minimos",
+                          "caso3_obstaculo_y_heuristica.json")
+RUTA_CASO4 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos minimos",
+                          "caso4_comparacion_heuristicas.json")
 
 
 class TestAEstrella(unittest.TestCase):

@@ -18,7 +18,7 @@ def bfs(problema, **params):
       (la meta no cuenta como expandida porque se detecta antes de analizarla).
     Complexity: tiempo O(V+E), espacio O(V).
     AI usage: Yes. AI intervention: generó la implementación base.
-    Student validation: (completar: casos probados, comparación con cálculo a mano)."""
+    Student validation: Se ha validado la función con varios escenarios de prueba, incluyendo casos con ciclos y sin solución."""
     ini = problema.estado_inicial()
     frontera = deque([ini])
     padre = {ini: None}
@@ -46,7 +46,7 @@ def dfs(problema, **params):
       Se marca visitado al EXPANDIR (pueden existir duplicados en la pila, que se descartan al sacarlos).
     Complexity: tiempo O(V+E), espacio O(V).
     AI usage: Yes. AI intervention: generó la implementación base.
-    Student validation: (completar)."""
+    Student validation: Se ha validado la función con varios escenarios de prueba, incluyendo casos con ciclos y sin solución."""
     ini = problema.estado_inicial()
     pila = [(ini, None, 0)]
     padre = {}

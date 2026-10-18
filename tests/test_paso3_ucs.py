@@ -9,7 +9,8 @@ from juego.problema_navegacion import ProblemaNavegacion
 from algoritmos.base import ejecutar_algoritmo
 from verificacion.verificador import verificar_camino
 
-RUTA_CASO2 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "caso2_ruta_corta_vs_economica.json")
+RUTA_CASO2 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos minimos",
+                          "caso2_ruta_corta_vs_economica.json")
 
 
 class TestUCS(unittest.TestCase):
