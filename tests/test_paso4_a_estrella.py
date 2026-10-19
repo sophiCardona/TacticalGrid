@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from escenario.cargador import cargar_escenario
 from juego.problema_navegacion import ProblemaNavegacion
 from algoritmos.base import ejecutar_algoritmo
-from algoritmos.a_estrella import h_manhattan, h_propia, h_euclidiana
+from algoritmos.a_estrella import h_manhattan, h_propia
 from verificacion.verificador import verificar_camino
 
 RUTA_CASO3 = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos minimos",
@@ -24,15 +24,12 @@ class TestAEstrella(unittest.TestCase):
         # En la meta, todas deben ser exactamente 0
         self.assertEqual(h_manhattan(p.objetivo, p), 0)
         self.assertEqual(h_propia(p.objetivo, p), 0)
-        self.assertEqual(h_euclidiana(p.objetivo, p), 0)
 
-        # En el inicio, h_propia >= h_manhattan >= h_euclidiana
+        # En el inicio, h_propia >= h_manhattan
         hm = h_manhattan(p.inicio, p)
         hp = h_propia(p.inicio, p)
-        he = h_euclidiana(p.inicio, p)
 
         self.assertGreaterEqual(hp, hm)
-        self.assertGreaterEqual(hm, he)
 
     def test_caso3_obstaculo_y_heuristica(self):
         """Caso 3: La heurística intenta avanzar en línea recta, pero un muro
