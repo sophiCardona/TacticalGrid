@@ -45,7 +45,7 @@ class App(tk.Tk):
         self.minsize(1000, 640)
         self._tema()
         self.escenario = self.reglas = self.estado = self.ruta_actual = None
-        self.historial, self.comparacion, self.capas = [], [], {}
+        self.historial, self.comparacion, self.heuristica_cmp, self.capas = [], [], {}, {}
         self.sel_unidad, self.auto, self.plies, self._cargando = None, False, 0, False
         self.btns_tarea = {}
         self.costos = {"A": 0, "B": 0}
@@ -210,6 +210,7 @@ class App(tk.Tk):
         self._tab_estadisticas()
         self._tab_comparacion()
         self._tab_escenario()
+        self._actualizar_visibles()
 
     def _tab_control(self):
         t = self.tab_ctrl
@@ -256,6 +257,7 @@ class App(tk.Tk):
         self.var_expl = tk.BooleanVar(value=True)
         ttk.Label(lf, text="Algoritmo").grid(row=0, column=0, sticky="w", padx=(0, 8))
         self.cb_alg.grid(row=0, column=1, sticky="ew", pady=2)
+        self.cb_alg.bind("<<ComboboxSelected>>", lambda e: self._actualizar_visibles())
         pend = ", ".join(e for _, e in PLANIFICADOS if normalizar_nombre(e) not in disponibles()
                          and _ not in disponibles())
         ttk.Label(lf, text=f"Pendientes de implementar: {pend}", style="Sub.TLabel").grid(
@@ -267,9 +269,11 @@ class App(tk.Tk):
         self.sp_of.pack(side="left")
         self.sp_oc.pack(side="left", padx=4)
         ttk.Label(fo, text="(o haz clic en el mapa)", style="Sub.TLabel").pack(side="left", padx=4)
-        ttk.Label(lf, text="Heurística (A*)").grid(row=4, column=0, sticky="w", padx=(0, 8))
+        self.lbl_heur_par = ttk.Label(lf, text="Heurística (A*)")
+        self.lbl_heur_par.grid(row=4, column=0, sticky="w", padx=(0, 8))
         self.cb_heur.grid(row=4, column=1, sticky="ew", pady=2)
-        ttk.Label(lf, text="k (Beam Search)").grid(row=5, column=0, sticky="w", padx=(0, 8))
+        self.lbl_k_par = ttk.Label(lf, text="k (Beam Search)")
+        self.lbl_k_par.grid(row=5, column=0, sticky="w", padx=(0, 8))
         self.sp_k.grid(row=5, column=1, sticky="w", pady=2)
         ttk.Checkbutton(lf, text="Mostrar estados explorados", variable=self.var_expl,
                         command=self.refrescar_tablero).grid(row=6, column=0, columnspan=2, sticky="w", pady=(4, 0))
@@ -372,6 +376,21 @@ class App(tk.Tk):
         ttk.Button(fb, text="Exportar CSV", style="Secundario.TButton", command=self.exportar_csv).pack(side="right")
         ttk.Button(fb, text="Borrar historial", style="Secundario.TButton",
                    command=self.borrar_historial).pack(side="right", padx=4)
+        # Comparación de heurísticas de A*: solo se empaqueta cuando A* está seleccionado.
+        self.fh_heur = ttk.Frame(t)
+        ttk.Label(self.fh_heur, text="Heurísticas de A*:", style="Sub.TLabel").pack(side="left", padx=(0, 6))
+        self.var_heur_est = {}
+        for h in HEURISTICAS:
+            v = tk.BooleanVar(value=True)
+            self.var_heur_est[h] = v
+            ttk.Checkbutton(self.fh_heur, text=h, variable=v,
+                            command=self._refrescar_comparacion_heur).pack(side="left", padx=(0, 8))
+        cols = ("h", "exito", "long", "costo", "gen", "exp", "fr", "t")
+        self.tree_heur = ttk.Treeview(t, columns=cols, show="headings", height=2)
+        for c, txt, w in zip(cols, ("Heurística", "Éxito", "Long.", "Costo", "Gener.", "Expand.", "Front.", "ms"),
+                             (90, 50, 50, 55, 60, 65, 55, 60)):
+            self.tree_heur.heading(c, text=txt)
+            self.tree_heur.column(c, width=w, anchor="center")
         self.cv_est = tk.Canvas(t, height=80, bg=PANEL, highlightthickness=1, highlightbackground=MARCOS)
         self.cv_est.pack(fill="both", expand=True)
         self.cv_est.bind("<Configure>", lambda e: self._graficar_estadisticas())
@@ -381,6 +400,10 @@ class App(tk.Tk):
         fb = ttk.Frame(t)
         fb.pack(fill="x")
         ttk.Button(fb, text="Comparar todos los algoritmos", command=self.comparar_todos).pack(side="left")
+        ttk.Label(fb, text="Heurística de A*").pack(side="left", padx=(12, 4))
+        self.var_heur_cmp = tk.StringVar(value=HEURISTICAS[0])
+        ttk.Combobox(fb, textvariable=self.var_heur_cmp, values=list(HEURISTICAS), state="readonly",
+                     width=12).pack(side="left")
         self.var_met_cmp = tk.StringVar(value="Estados expandidos")
         cb = ttk.Combobox(fb, textvariable=self.var_met_cmp, values=list(METRICAS), state="readonly", width=20)
         cb.pack(side="right")
@@ -422,6 +445,25 @@ class App(tk.Tk):
 
     def _modo_json(self):
         return self.var_modo.get() == "json"
+
+    def _es_astar(self):
+        return normalizar_nombre(self.var_alg.get()) == "A_ESTRELLA"
+
+    def _actualizar_visibles(self):
+        """Heurística y comparación de heurísticas solo con A*; k solo con Beam Search."""
+        alg = normalizar_nombre(self.var_alg.get())
+        for w in (self.lbl_heur_par, self.cb_heur):
+            w.grid() if alg == "A_ESTRELLA" else w.grid_remove()
+        for w in (self.lbl_k_par, self.sp_k):
+            w.grid() if alg == "BEAM_SEARCH" else w.grid_remove()
+        if hasattr(self, "tree_heur"):
+            if alg == "A_ESTRELLA":
+                self.fh_heur.pack(fill="x", pady=(0, 4), before=self.cv_est)
+                self.tree_heur.pack(fill="x", pady=(0, 4), before=self.cv_est)
+            else:
+                self.fh_heur.pack_forget()
+                self.tree_heur.pack_forget()
+            self._refrescar_comparacion_heur()
 
     # ------------------------------------------------------------------ carga de escenarios
     def cargar_dialogo(self):
@@ -527,6 +569,7 @@ class App(tk.Tk):
             self.lbl_info.config(text="MODO EXPLORACIÓN: usa el mapa cargado para probar cualquier tarea, "
                                       "algoritmo, unidad y objetivo que elijas.")
         self._bloquear(json_m)
+        self._actualizar_visibles()
         self._mostrar_frame_tarea()
         self.refrescar_tablero()
         if json_m and auto_ejecutar and self.escenario and self.escenario.prueba:
@@ -849,6 +892,8 @@ class App(tk.Tk):
         self.capas = {"camino": res.camino, "explorados": res.explorados}
         self.refrescar_tablero()
         self._mostrar_resultado(res, checks, p)
+        if nombre == "A_ESTRELLA":
+            self._comparar_heuristicas(p, res)
         self._refrescar_estadisticas()
         self.nb.select(self.tab_res)
         self._poner_estado(f"{nombre}: " + (f"camino de costo {fmt(res.costo)} y {res.longitud} movimientos."
@@ -864,7 +909,9 @@ class App(tk.Tk):
         p = self._problema()
         if p is None:
             return
-        self.comparacion = [self._correr(n, p) for n in disponibles()]
+        heur = self.var_heur_cmp.get()
+        self.comparacion = [self._correr(n, p, **({"heuristica": heur} if n == "A_ESTRELLA" else {}))
+                            for n in disponibles()]
         self._mostrar_comparacion(p)
         self._refrescar_estadisticas()
         self.nb.select(self.tab_cmp)
@@ -896,11 +943,13 @@ class App(tk.Tk):
     # ------------------------------------------------------------------ resultados
     def _limpiar_resultados(self):
         self._ultimo = None
+        self.heuristica_cmp = {}
         for t in (self.tree_res, self.tree_cmp):
             t.delete(*t.get_children())
         self.txt_res.delete("1.0", "end")
         self.lbl_cmp.config(text="Selecciona una fila para ver su camino en el mapa.")
         self._graficar_comparacion()
+        self._refrescar_comparacion_heur()
         self._refrescar_estadisticas()
 
     def _mostrar_resultado(self, res, checks, p):
@@ -989,14 +1038,42 @@ class App(tk.Tk):
         return g
 
     def _graficar_estadisticas(self):
-        clave = {"Estados expandidos": "estados_expandidos", "Estados generados": "estados_generados",
-                 "Costo": "costo", "Longitud": "longitud", "Máx. frontera": "maximo_frontera",
-                 "Tiempo (ms)": "tiempo_ms"}[self.var_met_est.get()]
+        clave = METRICAS[self.var_met_est.get()]
+        if self._es_astar() and self.heuristica_cmp:
+            datos = [(h, getattr(self.heuristica_cmp[h], clave)) for h in HEURISTICAS
+                     if self.var_heur_est.get(h) and h in self.heuristica_cmp]
+            barras(self.cv_est, datos, f"A* — {self.var_met_est.get()} por heurística")
+            return
         datos = []
         for alg, hs in self._agrupar().items():
             vals = [h[clave] for h in hs if h[clave] is not None]
             datos.append((alg, sum(vals) / len(vals) if vals else None))
         barras(self.cv_est, datos, f"Promedio por algoritmo: {self.var_met_est.get()}")
+
+    def _comparar_heuristicas(self, p, res_actual=None):
+        """Ejecuta A* con cada heurística y deja sus métricas en la pestaña Estadísticas."""
+        self.heuristica_cmp = {}
+        for h in HEURISTICAS:
+            if res_actual is not None and h == self.var_heur.get():
+                r = res_actual
+            else:
+                r, _ = self._correr("A_ESTRELLA", p, heuristica=h)
+            self.heuristica_cmp[h] = r
+        self._refrescar_comparacion_heur()
+
+    def _refrescar_comparacion_heur(self):
+        if not hasattr(self, "tree_heur"):
+            return
+        self.tree_heur.delete(*self.tree_heur.get_children())
+        for h in HEURISTICAS:
+            if not self.var_heur_est[h].get():
+                continue
+            r = self.heuristica_cmp.get(h)
+            valores = ((h, fmt(r.exito), fmt(r.longitud), fmt(r.costo), r.estados_generados,
+                        r.estados_expandidos, r.maximo_frontera, fmt(r.tiempo_ms)) if r
+                       else (h, "—", "—", "—", "—", "—", "—", "—"))
+            self.tree_heur.insert("", "end", values=valores)
+        self._graficar_estadisticas()
 
     def exportar_csv(self):
         if not self.historial:
@@ -1013,4 +1090,6 @@ class App(tk.Tk):
 
     def borrar_historial(self):
         self.historial = []
+        self.heuristica_cmp = {}
+        self._refrescar_comparacion_heur()
         self._refrescar_estadisticas()
