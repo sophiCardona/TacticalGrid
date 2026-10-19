@@ -36,22 +36,9 @@ def h_propia(s, problema):
     return (d - 1) * c_min + c_obj
 
 
-def h_euclidiana(s, problema):
-    """Purpose: heurística euclidiana multiplicada por c_min.
-    Preconditions: s y problema.objetivo son tuplas válidas.
-    Postconditions: devuelve cota inferior admisible (más relajada que Manhattan en movimientos 4-dir).
-    Complexity: O(1).
-    AI usage: Yes. AI intervention: implementación matemática.
-    Student validation: verificada con distancias euclidianas."""
-    c_min = problema.mapa.costo_minimo()
-    d = ((s[0] - problema.objetivo[0]) ** 2 + (s[1] - problema.objetivo[1]) ** 2) ** 0.5
-    return d * c_min
-
-
 HEURISTICAS = {
     "manhattan": h_manhattan,
     "propia": h_propia,
-    "euclidiana": h_euclidiana,
 }
 
 
@@ -64,7 +51,7 @@ def obtener_heuristica(nombre):
 def a_estrella(problema, **params):
     """Purpose: encontrar el camino óptimo hacia el objetivo minimizando f(n) = g(n) + h(n).
     Preconditions: problema expone estado_inicial(), es_objetivo(s), sucesores(s).
-      params puede contener 'heuristica' ('manhattan', 'propia', 'euclidiana').
+      params puede contener 'heuristica' ('manhattan', 'propia').
     Postconditions: ResultadoBusqueda con el camino óptimo y métricas registradas.
     Complexity: tiempo O(b^d) en el peor caso, pero fuertemente reducido según la calidad de h(n).
       Espacio O(b^d) para almacenar la frontera y los estados generados.
