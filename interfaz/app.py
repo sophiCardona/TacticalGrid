@@ -16,6 +16,7 @@ from interfaz.tablero import (COLOR_BANDO, FONDO, MARCOS, OBJETIVO, ORO, PANEL, 
 from juego.problema_navegacion import ProblemaNavegacion
 from juego.reglas import Reglas
 from verificacion.verificador import verificar_camino
+from algoritmos.minimax import minimax, alfa_beta
 
 TAREAS = {"Búsqueda de ruta": "busqueda", "Partida por turnos": "partida", "Decisión adversarial": "adversarial"}
 MODO_A_TAREA = {v: k for k, v in TAREAS.items()}
@@ -290,15 +291,15 @@ class App(tk.Tk):
         lf = ttk.Labelframe(f, text=" Despliegue de bandos ", padding=10)
         lf.grid(row=0, column=0, sticky="ew")
         lf.columnconfigure(1, weight=1)
-        self.var_ctrl = {"A": tk.StringVar(value="Humano"), "B": tk.StringVar(value="Azar (provisional)")}
+        self.var_ctrl = {"A": tk.StringVar(value="Humano"), "B": tk.StringVar(value="Alfa-Beta")}
         for i, bando in enumerate("AB"):
             ttk.Label(lf, text=f"Controla el bando {bando}").grid(row=i, column=0, sticky="w", padx=(0, 8))
             ttk.Combobox(lf, textvariable=self.var_ctrl[bando], state="readonly",
-                         values=["Humano", "Azar (provisional)"]).grid(row=i, column=1, sticky="ew", pady=2)
+                         values=["Humano", "Alfa-Beta", "Minimax", "Azar (provisional)"]).grid(row=i, column=1, sticky="ew", pady=2)
         self.lbl_costos = ttk.Label(lf, text="")
         self.lbl_costos.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
         ttk.Label(f, text="Clic en una unidad propia y luego en una celda marcada con borde punteado. "
-                          "Minimax se añadirá como controlador en el Paso 8.", style="Sub.TLabel",
+                          "Los bandos controlados por IA juegan con Minimax o Alfa-Beta.", style="Sub.TLabel",
                   wraplength=460).grid(row=1, column=0, sticky="ew", pady=6)
         fb = ttk.Frame(f)
         fb.grid(row=2, column=0, sticky="ew", pady=(4, 0))
@@ -320,17 +321,24 @@ class App(tk.Tk):
         lf = ttk.Labelframe(f, text=" Árbol de decisión ", padding=10)
         lf.grid(row=0, column=0, sticky="ew")
         lf.columnconfigure(1, weight=1)
-        self.var_prof, self.var_alg_adv = tk.StringVar(value="3"), tk.StringVar(value="MINIMAX")
+        self.var_prof, self.var_alg_adv = tk.StringVar(value="3"), tk.StringVar(value="ALFA_BETA")
+        self.var_orden_adv = tk.StringVar(value="estandar")
         ttk.Label(lf, text="Algoritmo").grid(row=0, column=0, sticky="w", padx=(0, 8))
-        ttk.Combobox(lf, textvariable=self.var_alg_adv, values=["MINIMAX", "ALFA_BETA"],
+        ttk.Combobox(lf, textvariable=self.var_alg_adv, values=["ALFA_BETA", "MINIMAX"],
                      state="readonly").grid(row=0, column=1, sticky="ew", pady=2)
-        ttk.Label(lf, text="Profundidad máxima").grid(row=1, column=0, sticky="w", padx=(0, 8))
-        ttk.Spinbox(lf, from_=1, to=12, textvariable=self.var_prof, width=5).grid(row=1, column=1, sticky="w")
-        ttk.Label(f, text="Minimax y alfa-beta se implementan en el Paso 8. Por ahora se lista cada acción "
-                          "legal del estado actual (la base de la verificación de legalidad).",
+        ttk.Label(lf, text="Profundidad").grid(row=1, column=0, sticky="w", padx=(0, 8))
+        ttk.Spinbox(lf, from_=1, to=8, textvariable=self.var_prof, width=5).grid(row=1, column=1, sticky="w", pady=2)
+        ttk.Label(lf, text="Orden de acciones").grid(row=2, column=0, sticky="w", padx=(0, 8))
+        ttk.Combobox(lf, textvariable=self.var_orden_adv, values=["estandar", "inverso", "heuristico"],
+                     state="readonly").grid(row=2, column=1, sticky="ew", pady=2)
+        ttk.Label(f, text="Evalúa el estado actual desde la perspectiva del bando en turno utilizando Minimax o Alfa-Beta.",
                   style="Sub.TLabel", wraplength=460).grid(row=1, column=0, sticky="ew", pady=6)
-        ttk.Button(f, text="Listar acciones legales", command=self._ejecutar_adversarial).grid(
-            row=2, column=0, sticky="ew", pady=(4, 0))
+        fb = ttk.Frame(f)
+        fb.grid(row=2, column=0, sticky="ew", pady=(4, 0))
+        fb.columnconfigure(0, weight=1)
+        fb.columnconfigure(1, weight=1)
+        ttk.Button(fb, text="Evaluar estado", command=self._ejecutar_adversarial).grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        ttk.Button(fb, text="Evaluar y jugar", command=self._evaluar_y_aplicar_adversarial, style="Secundario.TButton").grid(row=0, column=1, sticky="ew")
         return f
 
     def _tab_resultados(self):
@@ -768,10 +776,29 @@ class App(tk.Tk):
     def turno_ia(self):
         if not self.escenario or self.reglas.es_terminal(self.estado):
             return
-        if self._es_humano(self.estado.turno):
-            self._poner_estado(f"El bando {self.estado.turno} está controlado por un humano.")
+        bando = self.estado.turno
+        ctrl = self.var_ctrl[bando].get()
+        if ctrl.startswith("Humano"):
+            self._poner_estado(f"El bando {bando} está controlado por un humano.")
             return
-        self._aplicar_accion(self.rng.choice(self.reglas.acciones_legales(self.estado)))
+
+        try:
+            prof = int(self.var_prof.get())
+        except ValueError:
+            prof = self.escenario.profundidad_minimax
+
+        if "Minimax" in ctrl:
+            res = minimax(self.estado, self.reglas, self.escenario, profundidad_maxima=prof)
+            accion = res.accion or self.rng.choice(self.reglas.acciones_legales(self.estado))
+            self.log(f"[IA Minimax {bando} (prof {prof})] {accion} (valor: {res.valor:.1f}, eval: {res.nodos_evaluados})")
+        elif "Alfa-Beta" in ctrl:
+            res = alfa_beta(self.estado, self.reglas, self.escenario, profundidad_maxima=prof, orden_acciones="heuristico")
+            accion = res.accion or self.rng.choice(self.reglas.acciones_legales(self.estado))
+            self.log(f"[IA Alfa-Beta {bando} (prof {prof})] {accion} (valor: {res.valor:.1f}, podas: {res.nodos_podados})")
+        else:
+            accion = self.rng.choice(self.reglas.acciones_legales(self.estado))
+
+        self._aplicar_accion(accion)
 
     def auto_jugar(self):
         if not self.escenario or self._tarea() != "partida":
@@ -906,15 +933,79 @@ class App(tk.Tk):
         ok = all(c[1] for c in checks)
         messagebox.showinfo("Verificación", "Todas las comprobaciones pasaron." if ok else "Hay comprobaciones que fallaron.")
 
+    def _correr_adversarial(self):
+        if not self.escenario:
+            return None
+        alg = self.var_alg_adv.get()
+        try:
+            prof = int(self.var_prof.get())
+        except ValueError:
+            prof = 3
+        orden = self.var_orden_adv.get()
+        fn = alfa_beta if alg == "ALFA_BETA" else minimax
+        return fn(self.estado, self.reglas, self.escenario, profundidad_maxima=prof, orden_acciones=orden)
+
     def _ejecutar_adversarial(self):
-        self.nb.select(self.tab_esc)
-        self.log(f"--- Decisión adversarial ({self.var_alg_adv.get()}, profundidad {self.var_prof.get()}) ---")
-        self.log(f"Estado: turno {self.estado.turno}, portador {self.estado.portador}.")
-        acc = self.reglas.acciones_legales(self.estado)
-        for a in acc:
-            self.log("  " + (f"{a.unidad_id} espera" if a.tipo == "ESPERAR" else f"{a.unidad_id} -> {a.destino}"))
-        self.log(f"{len(acc)} acciones legales. Minimax/alfa-beta se implementarán en el Paso 8.")
-        self._poner_estado("Adversarial: listadas las acciones legales (Minimax pendiente).")
+        if not self.escenario:
+            messagebox.showinfo("Sin escenario", "Primero carga un escenario JSON.")
+            return
+        if self.reglas.es_terminal(self.estado):
+            messagebox.showinfo("Fin de partida", "La partida ya terminó.")
+            return
+        res = self._correr_adversarial()
+        if not res:
+            return
+
+        self._mostrar_resultado_adversarial(res)
+        self.nb.select(self.tab_res)
+        if res.accion:
+            desc = f"{res.accion.unidad_id} espera" if res.accion.tipo == "ESPERAR" else f"{res.accion.unidad_id} -> {res.accion.destino}"
+            self._poner_estado(f"{res.algoritmo} (prof {res.profundidad_maxima}): recomendó {desc} (valor {res.valor:.2f}).")
+            if res.accion.tipo == "MOVER":
+                self.capas = {"destinos": [res.accion.destino]}
+                self.sel_unidad = res.accion.unidad_id
+                self.refrescar_tablero()
+
+    def _evaluar_y_aplicar_adversarial(self):
+        if not self.escenario:
+            messagebox.showinfo("Sin escenario", "Primero carga un escenario JSON.")
+            return
+        if self.reglas.es_terminal(self.estado):
+            messagebox.showinfo("Fin de partida", "La partida ya terminó.")
+            return
+        res = self._correr_adversarial()
+        if res and res.accion:
+            self._aplicar_accion(res.accion)
+            desc = f"{res.accion.unidad_id} espera" if res.accion.tipo == "ESPERAR" else f"{res.accion.unidad_id} -> {res.accion.destino}"
+            self._poner_estado(f"Jugada aplicada: {desc}.")
+
+    def _mostrar_resultado_adversarial(self, res):
+        self.tree_res.delete(*self.tree_res.get_children())
+        filas = [
+            ("Algoritmo", res.algoritmo),
+            ("Turno analizado", f"Bando {self.estado.turno}"),
+            ("Acción recomendada", str(res.accion)),
+            ("Valor obtenido", f"{res.valor:.2f}"),
+            ("Profundidad explorada", str(res.profundidad_maxima)),
+            ("Nodos generados", str(res.nodos_generados)),
+            ("Nodos evaluados (hojas)", str(res.nodos_evaluados)),
+            ("Nodos podados", str(res.nodos_podados)),
+            ("Tiempo (ms)", f"{res.tiempo_ms:.3f}"),
+            ("Orden de acciones", res.orden_acciones),
+        ]
+        for f in filas:
+            self.tree_res.insert("", "end", values=f)
+
+        t = self.txt_res
+        t.delete("1.0", "end")
+        t.insert("end", f"Evaluación Adversarial — {res.algoritmo}\n", "h")
+        t.insert("end", f"Acción recomendada: {res.accion}\n")
+        t.insert("end", f"Valor Minimax: {res.valor:.2f}\n")
+        t.insert("end", f"Nodos evaluados: {res.nodos_evaluados} | Podados: {res.nodos_podados} | Generados: {res.nodos_generados}\n")
+        t.insert("end", f"Tiempo de cálculo: {res.tiempo_ms:.3f} ms\n\n")
+        t.insert("end", "Métricas en formato JSON\n", "h")
+        d = res.a_dict()
+        t.insert("end", "{\n" + ",\n".join(f'  "{k}": {json.dumps(v, ensure_ascii=False)}' for k, v in d.items()) + "\n}")
 
     # ------------------------------------------------------------------ resultados
     def _limpiar_resultados(self):

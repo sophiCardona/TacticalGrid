@@ -6,7 +6,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from escenario.cargador import cargar_escenario
 from juego.reglas import Reglas
 
-D = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos_minimos")
+_dir_minimos = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos minimos")
+D = _dir_minimos if os.path.isdir(_dir_minimos) else os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos_minimos")
 a = cargar_escenario(os.path.join(D, "caso06a_sin_recurso.json"))
 b = cargar_escenario(os.path.join(D, "caso06b_con_recurso.json"))
 sa, sb = a.estado_inicial(), b.estado_inicial()
