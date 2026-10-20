@@ -174,14 +174,38 @@ TacticalGrid/
 │   ├── prueba_partida.json
 │   ├── prueba_adversarial.json
 │   ├── invalido_a_proposito.json
-│   └── casos minimos/
-│       ├── caso01_bfs_vs_dfs.json
-│       ├── caso2_ruta_corta_vs_economica.json
-│       ├── caso3_obstaculo_y_heuristica.json
-│       ├── caso4_comparacion_heuristicas.json
-│       ├── caso05_beam_search.json
-│       ├── caso06a_sin_recurso.json
-│       └── caso06b_con_recurso.json
+│   ├── casos minimos/
+│   │   ├── caso01_bfs_vs_dfs.json
+│   │   ├── caso2_ruta_corta_vs_economica.json
+│   │   ├── caso3_obstaculo_y_heuristica.json
+│   │   ├── caso4_comparacion_heuristicas.json
+│   │   ├── caso05_beam_search.json
+│   │   ├── caso06a_sin_recurso.json
+│   │   └── caso06b_con_recurso.json
+│   ├── casos_invalidos/
+│   │   ├── inv01_dimensiones_inconsistentes.json
+│   │   ├── inv02_terreno_inexistente.json
+│   │   ├── inv03_costo_cero.json
+│   │   ├── inv04_base_fuera_del_mapa.json
+│   │   ├── inv05_unidad_sobre_muro.json
+│   │   ├── inv06_id_repetido.json
+│   │   ├── inv07_bando_invalido.json
+│   │   ├── inv08_turno_invalido.json
+│   │   ├── inv09_portador_inexistente.json
+│   │   ├── inv10_json_mal_formado.json
+│   │   ├── inv11_falta_campo_obligatorio.json
+│   │   └── inv12_recurso_fuera_del_mapa.json
+│   └── casos_robustos/
+│       ├── r01_meta_inalcanzable.json
+│       ├── r02_inicio_igual_meta.json
+│       ├── r03_corredor_1x20.json
+│       ├── r04_unidad_encerrada.json
+│       ├── r05_objetivo_en_muro.json
+│       ├── r06_costos_fraccionarios.json
+│       ├── r07_dimensiones_y_nombres_nuevos.json
+│       ├── r08_mapa_grande_40x40.json
+│       ├── r09_portador_en_su_base.json
+│       └── r10_unidad_sobre_el_recurso.json
 ├── docs/              (vacío)
 └── heuristicas/       (vacío)
 ```
@@ -952,6 +976,42 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 - No hay medición de cobertura.
 - No hay integración continua configurada.
 
+### 11.4 Escenarios de robustez
+
+Ubicación: `escenarios/casos_robustos/` (10 archivos). Todos son escenarios **válidos**: superan `escenario/validador.py` y pueden cargarse con `cargar_escenario`. Su función es ejercer casos límite del cargador, del modelo de juego y de los algoritmos.
+
+| Archivo | Configuración verificable | Caso límite | Comportamiento esperado |
+|---|---|---|---|
+| `r01_meta_inalcanzable.json` | 20×20; meta `(15,15)` encerrada por muros; A1 en `(2,2)` | Meta inalcanzable | BFS, DFS, UCS, A* y Beam Search terminan con `exito = False` sin bloquearse |
+| `r02_inicio_igual_meta.json` | A1 y meta en `(5,5)` | Origen igual a meta | `exito = True`, longitud `0`, costo `0` |
+| `r03_corredor_1x20.json` | Mapa 1×20; 10 celdas `camino` y 10 `pasto`; A1 en `(0,0)`, meta `(0,19)` | Mapa no cuadrado | Camino único de 19 movimientos y costo `9×1 + 10×2 = 29` |
+| `r04_unidad_encerrada.json` | A1 en `(5,5)` con muros en sus cuatro vecinos | Sin vecinos transitables | Las búsquedas fallan; en partida A1 solo dispone de `ESPERAR` (11 acciones legales para el bando A) |
+| `r05_objetivo_en_muro.json` | Muro en `(10,10)`; `prueba.objetivo = (10,10)` | Objetivo no transitable | La búsqueda se rechaza antes de ejecutar el algoritmo |
+| `r06_costos_fraccionarios.json` | Terreno `autopista` con costo `0.5` en la fila 2; A1 en `(2,0)`, meta `(4,19)` | Costos fraccionarios | 21 movimientos y costo `11.5`; A* con Manhattan (escalada por `c_min = 0.5`) iguala a UCS |
+| `r07_dimensiones_y_nombres_nuevos.json` | 8×12; terrenos `sendero`, `arena`, `agua` y `roca`; 4 unidades por bando; tipos de unidad y campos adicionales | Dimensiones, nombres y campos no previstos | El cargador ignora los campos extra y los algoritmos usan los costos del JSON |
+| `r08_mapa_grande_40x40.json` | 40×40 con terreno aleatorio de semilla fija y ~5 % de muros; A1 en `(2,2)`, meta `(37,37)` | Escala | Todos los algoritmos hallan solución; UCS y A* coinciden en costo |
+| `r09_portador_en_su_base.json` | A1 en `(0,0)` con el recurso y `prueba.modo = "partida"` | Victoria en el estado inicial | `Reglas.ganador` devuelve `A` al cargar |
+| `r10_unidad_sobre_el_recurso.json` | A1 en `(10,10)`, celda del recurso, con `portador_recurso: null` | Recurso bajo una unidad al iniciar | El estado inicial marca a A1 como portadora; `ganador` es `None` |
+
+### 11.5 Escenarios inválidos
+
+Ubicación: `escenarios/casos_invalidos/` (12 archivos). Cada archivo parte de un escenario base válido y rompe **una sola** regla de validación. El comportamiento esperado es que `cargar_escenario` lance `ErrorEscenario` y que `App.cargar_ruta` conserve intacto el escenario anterior (carga «todo o nada»).
+
+| Archivo | Regla incumplida | Error esperado (fragmento) |
+|---|---|---|
+| `inv01_dimensiones_inconsistentes.json` | `mapa.filas = 5` con un terreno de 4 filas | `mapa.filas es 5` |
+| `inv02_terreno_inexistente.json` | El terreno usa `lava`, ausente de `tipos_terreno` | `no existe en tipos_terreno` |
+| `inv03_costo_cero.json` | `pasto` transitable con costo `0` | `costo positivo` |
+| `inv04_base_fuera_del_mapa.json` | Base A en la fila `9` de un mapa 4×4 | `bases.A est` |
+| `inv05_unidad_sobre_muro.json` | A1 ubicada en la celda `(1,1)`, que es muro | `no transitable` |
+| `inv06_id_repetido.json` | A2 renombrada como `A1` | `repetido` |
+| `inv07_bando_invalido.json` | Una unidad declara `bando = "C"` | `bando debe ser A o B` |
+| `inv08_turno_invalido.json` | `turno = "Z"` | `turno debe ser A o B` |
+| `inv09_portador_inexistente.json` | `portador_recurso = "X9"` sin unidad correspondiente | `no es una unidad existente` |
+| `inv10_json_mal_formado.json` | JSON truncado (no parseable) | `JSON mal formado` |
+| `inv11_falta_campo_obligatorio.json` | Se elimina la sección `bases` | `Faltan campos obligatorios` |
+| `inv12_recurso_fuera_del_mapa.json` | Recurso en la columna `40` de un mapa 4×4 | `recurso est` |
+
 ---
 
 ## 12. Limitaciones técnicas, deuda técnica y funcionalidades pendientes
@@ -1152,6 +1212,28 @@ Sugerencia de evidencia a incorporar:
 | `escenarios/casos minimos/caso05_beam_search.json` | Referencia `BEAM_SEARCH`, `k=1` | `busqueda` |
 | `escenarios/casos minimos/caso06a_sin_recurso.json` | Estado compuesto sin portador | `adversarial` |
 | `escenarios/casos minimos/caso06b_con_recurso.json` | Estado compuesto con portador `A1` | `adversarial` |
+| `escenarios/casos_invalidos/inv01_dimensiones_inconsistentes.json` | Dimensiones incoherentes | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv02_terreno_inexistente.json` | Terreno no declarado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv03_costo_cero.json` | Costo no positivo | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv04_base_fuera_del_mapa.json` | Base fuera de límites | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv05_unidad_sobre_muro.json` | Unidad sobre obstáculo | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv06_id_repetido.json` | Identificador duplicado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv07_bando_invalido.json` | Bando distinto de A/B | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv08_turno_invalido.json` | Turno distinto de A/B | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv09_portador_inexistente.json` | Portador inexistente | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv10_json_mal_formado.json` | JSON truncado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv11_falta_campo_obligatorio.json` | Falta `bases` | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv12_recurso_fuera_del_mapa.json` | Recurso fuera de límites | No aplica (inválido) |
+| `escenarios/casos_robustos/r01_meta_inalcanzable.json` | Meta encerrada por muros | `busqueda` |
+| `escenarios/casos_robustos/r02_inicio_igual_meta.json` | Origen igual a meta | `busqueda` |
+| `escenarios/casos_robustos/r03_corredor_1x20.json` | Mapa 1×20 | `busqueda` |
+| `escenarios/casos_robustos/r04_unidad_encerrada.json` | Unidad sin vecinos transitables | `busqueda` |
+| `escenarios/casos_robustos/r05_objetivo_en_muro.json` | Objetivo sobre muro | `busqueda` |
+| `escenarios/casos_robustos/r06_costos_fraccionarios.json` | Autopista de costo `0.5` | `busqueda` |
+| `escenarios/casos_robustos/r07_dimensiones_y_nombres_nuevos.json` | Mapa 8×12 y terrenos nuevos | `busqueda` |
+| `escenarios/casos_robustos/r08_mapa_grande_40x40.json` | Mapa 40×40 | `busqueda` |
+| `escenarios/casos_robustos/r09_portador_en_su_base.json` | Victoria en estado inicial | `partida` |
+| `escenarios/casos_robustos/r10_unidad_sobre_el_recurso.json` | Unidad sobre el recurso | `partida` |
 
 ### 13.7 Anexo G — Glosario
 
