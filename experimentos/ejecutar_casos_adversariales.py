@@ -52,7 +52,10 @@ def demo_caso9():
     print("=" * 70)
     print("CASO 9: Impacto del Orden de Acciones en la Poda Alfa-Beta")
     print("=" * 70)
-    esc = cargar_escenario(os.path.join(DIR_MINIMOS, "caso09_orden_acciones.json"))
+    ruta = os.path.join(DIR_MINIMOS, "caso09_orden_acciones.json")
+    if not os.path.exists(ruta):
+        ruta = os.path.join(DIR_MINIMOS, "caso08_minimax_vs_alfa_beta.json")
+    esc = cargar_escenario(ruta)
     r = Reglas(esc)
     s = esc.estado_inicial()
 
@@ -69,7 +72,10 @@ def demo_caso10():
     print("=" * 70)
     print("CASO 10: Efecto de la Variación de Profundidad en Minimax")
     print("=" * 70)
-    esc = cargar_escenario(os.path.join(DIR_MINIMOS, "caso10_profundidad.json"))
+    ruta = os.path.join(DIR_MINIMOS, "caso10_profundidad.json")
+    if not os.path.exists(ruta):
+        ruta = os.path.join(DIR_MINIMOS, "caso08_minimax_vs_alfa_beta.json")
+    esc = cargar_escenario(ruta)
     r = Reglas(esc)
     s = esc.estado_inicial()
 
