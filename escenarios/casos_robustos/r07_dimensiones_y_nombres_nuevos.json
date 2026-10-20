@@ -1,0 +1,234 @@
+{
+ "autor": "equipo",
+ "notas": "campos extra que el cargador debe ignorar",
+ "descripcion": "8 filas x 12 columnas, terrenos con nombres distintos, 4 unidades por bando, tipos de unidad desconocidos y campos adicionales.",
+ "version": "1.0",
+ "mapa": {
+  "filas": 8,
+  "columnas": 12
+ },
+ "tipos_terreno": {
+  "sendero": {
+   "costo": 1,
+   "transitable": true
+  },
+  "arena": {
+   "costo": 3,
+   "transitable": true
+  },
+  "agua": {
+   "costo": 5,
+   "transitable": true
+  },
+  "roca": {
+   "transitable": false
+  }
+ },
+ "terreno": [
+  [
+   "sendero",
+   "sendero",
+   "sendero",
+   "sendero",
+   "sendero",
+   "sendero",
+   "agua",
+   "sendero",
+   "sendero",
+   "arena",
+   "roca",
+   "arena"
+  ],
+  [
+   "sendero",
+   "agua",
+   "arena",
+   "sendero",
+   "roca",
+   "roca",
+   "agua",
+   "roca",
+   "sendero",
+   "arena",
+   "agua",
+   "arena"
+  ],
+  [
+   "sendero",
+   "sendero",
+   "sendero",
+   "arena",
+   "roca",
+   "roca",
+   "sendero",
+   "agua",
+   "sendero",
+   "agua",
+   "arena",
+   "sendero"
+  ],
+  [
+   "arena",
+   "sendero",
+   "agua",
+   "arena",
+   "sendero",
+   "sendero",
+   "agua",
+   "sendero",
+   "sendero",
+   "agua",
+   "sendero",
+   "arena"
+  ],
+  [
+   "sendero",
+   "roca",
+   "agua",
+   "sendero",
+   "sendero",
+   "sendero",
+   "arena",
+   "roca",
+   "sendero",
+   "arena",
+   "arena",
+   "arena"
+  ],
+  [
+   "agua",
+   "arena",
+   "roca",
+   "arena",
+   "arena",
+   "sendero",
+   "arena",
+   "sendero",
+   "arena",
+   "sendero",
+   "sendero",
+   "sendero"
+  ],
+  [
+   "arena",
+   "arena",
+   "sendero",
+   "sendero",
+   "agua",
+   "agua",
+   "roca",
+   "agua",
+   "agua",
+   "roca",
+   "arena",
+   "sendero"
+  ],
+  [
+   "arena",
+   "sendero",
+   "agua",
+   "agua",
+   "agua",
+   "arena",
+   "sendero",
+   "sendero",
+   "sendero",
+   "sendero",
+   "roca",
+   "sendero"
+  ]
+ ],
+ "bases": {
+  "A": {
+   "fila": 0,
+   "columna": 0
+  },
+  "B": {
+   "fila": 7,
+   "columna": 11
+  }
+ },
+ "recurso": {
+  "fila": 4,
+  "columna": 8
+ },
+ "unidades": [
+  {
+   "id": "A1",
+   "bando": "A",
+   "tipo": "explorador",
+   "fila": 0,
+   "columna": 1,
+   "vision": 3
+  },
+  {
+   "id": "A2",
+   "bando": "A",
+   "tipo": "pesado",
+   "fila": 0,
+   "columna": 2,
+   "vision": 3
+  },
+  {
+   "id": "A3",
+   "bando": "A",
+   "tipo": "explorador",
+   "fila": 0,
+   "columna": 3,
+   "vision": 3
+  },
+  {
+   "id": "A4",
+   "bando": "A",
+   "tipo": "pesado",
+   "fila": 0,
+   "columna": 4,
+   "vision": 3
+  },
+  {
+   "id": "B1",
+   "bando": "B",
+   "tipo": "explorador",
+   "fila": 7,
+   "columna": 6,
+   "vision": 3
+  },
+  {
+   "id": "B2",
+   "bando": "B",
+   "tipo": "pesado",
+   "fila": 7,
+   "columna": 7,
+   "vision": 3
+  },
+  {
+   "id": "B3",
+   "bando": "B",
+   "tipo": "explorador",
+   "fila": 7,
+   "columna": 8,
+   "vision": 3
+  },
+  {
+   "id": "B4",
+   "bando": "B",
+   "tipo": "pesado",
+   "fila": 7,
+   "columna": 9,
+   "vision": 3
+  }
+ ],
+ "turno": "A",
+ "juego": {
+  "portador_recurso": null,
+  "profundidad_maxima_minimax": 3
+ },
+ "prueba": {
+  "modo": "busqueda",
+  "unidad_inicio": "A1",
+  "objetivo": {
+   "fila": 4,
+   "columna": 8
+  }
+ }
+}
