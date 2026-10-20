@@ -1,15 +1,23 @@
 # TacticalGrid
 
-Integrantes: (completar con los nombres del equipo)
+Integrantes:
+- Sophia Cardona
+- Danna Alexandra Madrid Roa
+- Michel Dahiana Arenas López
+
+## Documentación
+- [Manual de Usuario](documentacion/manual_de_usuario.md)
+- [Manual Técnico](documentacion/manual_tecnico.md)
 
 ## Ejecutar
-    python3 main.py          # abre la interfaz
-    python3 tests/test_paso1_2.py   # pruebas de carga, validación y reglas
+```bash
+python main.py                 # Abre la interfaz gráfica
+python -m unittest discover -s tests -p "test_*.py" -v  # Pruebas unitarias
+```
 
 Requiere Python 3.9+ con tkinter (Windows y macOS ya lo incluyen; en Ubuntu/Debian: `sudo apt install python3-tk`).
 
 ## Modos de la interfaz
-- Modo JSON: ejecuta lo que diga el campo `prueba` del archivo (busqueda, partida, adversarial).
-- Modo exploración: se elige libremente tarea, algoritmo, unidad y objetivo.
+- **Modo JSON:** Ejecuta estrictamente lo que indica el campo `prueba` del archivo JSON (búsqueda, partida, adversarial).
+- **Modo Exploración:** Permite interactuar libremente seleccionando tarea, algoritmo, heurística, unidad de inicio y objetivo mediante clics en el tablero.
 
-Campos opcionales propios dentro de `prueba` (el enunciado permite campos extra): `algoritmo`, `heuristica`, `k`.

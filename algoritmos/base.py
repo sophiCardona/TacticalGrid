@@ -8,8 +8,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Algoritmos previstos que aún no existen (la interfaz los muestra como pendientes).
-PLANIFICADOS = (("UCS", "Costo uniforme"), ("A_ESTRELLA", "A*"), ("BEAM_SEARCH", "Beam Search"))
+# Todos los algoritmos de búsqueda han sido implementados.
+PLANIFICADOS = ()  # BFS, DFS, UCS, A*, Beam Search: todos disponibles.
 
 REGISTRO = {}
 

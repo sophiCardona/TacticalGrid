@@ -1,5 +1,6 @@
 """Búsqueda informada: Algoritmo A* con heurísticas admisibles."""
 import heapq
+import math
 
 from algoritmos.base import ResultadoBusqueda, reconstruir_camino, registrar
 
@@ -36,9 +37,22 @@ def h_propia(s, problema):
     return (d - 1) * c_min + c_obj
 
 
+def h_euclidiana(s, problema):
+    """Purpose: estimar costo restante usando la distancia euclidiana escalada por c_min.
+    Preconditions: s y problema.objetivo son tuplas (fila, columna) válidas.
+    Postconditions: devuelve cota inferior admisible h(s) <= h*(s); menos informada que Manhattan en grillas.
+    Complexity: O(1).
+    AI usage: Yes. AI intervention: uso de distancia euclidiana como alternativa geométrica a Manhattan.
+    Student validation: verificada admisibilidad (euclidiana <= manhattan); comparada en numero de expansiones."""
+    c_min = problema.mapa.costo_minimo()
+    d = math.sqrt((s[0] - problema.objetivo[0]) ** 2 + (s[1] - problema.objetivo[1]) ** 2)
+    return d * c_min
+
+
 HEURISTICAS = {
     "manhattan": h_manhattan,
     "propia": h_propia,
+    "euclidiana": h_euclidiana,
 }
 
 
@@ -51,12 +65,12 @@ def obtener_heuristica(nombre):
 def a_estrella(problema, **params):
     """Purpose: encontrar el camino óptimo hacia el objetivo minimizando f(n) = g(n) + h(n).
     Preconditions: problema expone estado_inicial(), es_objetivo(s), sucesores(s).
-      params puede contener 'heuristica' ('manhattan', 'propia').
+      params puede contener 'heuristica' ('manhattan', 'propia', 'euclidiana').
     Postconditions: ResultadoBusqueda con el camino óptimo y métricas registradas.
     Complexity: tiempo O(b^d) en el peor caso, pero fuertemente reducido según la calidad de h(n).
       Espacio O(b^d) para almacenar la frontera y los estados generados.
     AI usage: Yes. AI intervention: estructura del algoritmo A* con desempate por h(n).
-    Student validation: verificado contra BFS y UCS, y comparadas ambas heurísticas en escenarios con obstáculos."""
+    Student validation: verificado contra BFS y UCS, y comparadas las tres heurísticas en escenarios con obstáculos."""
     h_nombre = params.get("heuristica", "manhattan")
     h_fn = obtener_heuristica(h_nombre)
 
