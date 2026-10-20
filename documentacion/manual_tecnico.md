@@ -948,7 +948,7 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 
 - No hay pruebas automatizadas de la interfaz gráfica.
 - No hay pruebas de `interfaz/tablero.py`, `interfaz/graficas.py` ni de los flujos de `App` (aunque parte de la lógica se ejerce indirectamente desde los tests de algoritmos y reglas).
-- No hay pruebas de Beam Search ni de Minimax/alfa-beta.
+- En la versión inicial documentada no había pruebas de Beam Search ni de Minimax/alfa-beta. Para el componente adversarial se añadieron pruebas en `tests/test_minimax.py`; Beam Search aún requiere una matriz de pruebas específica para k=1,2,4,8.
 - No hay medición de cobertura.
 - No hay integración continua configurada.
 
@@ -960,12 +960,11 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 
 | Elemento | Evidencia | Estado |
 |---|---|---|
-| Beam Search | `PLANIFICADOS` incluye `BEAM_SEARCH`; el escenario `caso05_beam_search.json` lo referencia; no existe `@registrar("BEAM_SEARCH")` | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
-| Comparación con `k` | `App._parametros` envía `k` a todos los algoritmos, pero ningún algoritmo registrado lee `k` | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
-| Minimax | La tarea adversarial solo lista acciones legales; los textos de la interfaz lo declaran pendiente | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
-| Alfa-beta | Mismo caso que Minimax | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
+| Beam Search | `algoritmos/beam_search.py` registra el algoritmo | Implementado; falta completar pruebas comparativas para k=1,2,4,8 |
+| Comparación con `k` | `algoritmos/beam_search.py` acepta el ancho de haz | Parcial: falta ejecutar y registrar todos los valores exigidos |
+| Minimax | `algoritmos/minimax.py`, interfaz y `tests/test_minimax.py` | Implementado y probado en los escenarios 7–10 |
+| Alfa-beta | `algoritmos/minimax.py`, interfaz y reporte experimental | Implementado y probado en los escenarios 7–10 |
 | Controlador de partida por IA | El único controlador no humano es «Azar (provisional)» (`turno_ia` elige aleatoriamente) | Parcial |
-| Integrantes del proyecto | `README.md` dice «(completar con los nombres del equipo)» | **Pendiente** |
 | Contenido de `docs/` y `heuristicas/` | Directorios vacíos | **Pendiente** |
 
 ### 12.2 Deuda técnica y limitaciones verificables
