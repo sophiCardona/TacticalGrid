@@ -1,0 +1,124 @@
+{
+ "descripcion": "Mapa 1x20: un solo camino posible. Costo = 9x1 + 10x2 = 29.",
+ "version": "1.0",
+ "mapa": {
+  "filas": 1,
+  "columnas": 20
+ },
+ "tipos_terreno": {
+  "camino": {
+   "costo": 1,
+   "transitable": true
+  },
+  "pasto": {
+   "costo": 2,
+   "transitable": true
+  },
+  "bosque": {
+   "costo": 4,
+   "transitable": true
+  },
+  "pantano": {
+   "costo": 7,
+   "transitable": true
+  },
+  "muro": {
+   "transitable": false
+  }
+ },
+ "terreno": [
+  [
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "camino",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto",
+   "pasto"
+  ]
+ ],
+ "bases": {
+  "A": {
+   "fila": 0,
+   "columna": 0
+  },
+  "B": {
+   "fila": 0,
+   "columna": 19
+  }
+ },
+ "recurso": {
+  "fila": 0,
+  "columna": 10
+ },
+ "unidades": [
+  {
+   "id": "A1",
+   "bando": "A",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 0
+  },
+  {
+   "id": "A2",
+   "bando": "A",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 1
+  },
+  {
+   "id": "A3",
+   "bando": "A",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 2
+  },
+  {
+   "id": "B1",
+   "bando": "B",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 19
+  },
+  {
+   "id": "B2",
+   "bando": "B",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 18
+  },
+  {
+   "id": "B3",
+   "bando": "B",
+   "tipo": "estandar",
+   "fila": 0,
+   "columna": 17
+  }
+ ],
+ "turno": "A",
+ "juego": {
+  "portador_recurso": null,
+  "profundidad_maxima_minimax": 3
+ },
+ "prueba": {
+  "modo": "busqueda",
+  "unidad_inicio": "A1",
+  "objetivo": {
+   "fila": 0,
+   "columna": 19
+  }
+ }
+}
