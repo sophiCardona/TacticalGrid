@@ -1,4 +1,4 @@
-"""BFS y DFS. Incluidos ahora SOLO para poder probar la interfaz; el Paso 3 los explica a fondo."""
+"""BFS y DFS"""
 from collections import deque
 
 from algoritmos.base import ResultadoBusqueda, reconstruir_camino, registrar
