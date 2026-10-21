@@ -24,6 +24,12 @@ class Escenario:
         Complexity: O(n log n) por ordenar n unidades.
         AI usage: Yes. AI intervention: estructura del método.
         Student validation: Se ha validado el método con varios casos de prueba."""
-        recurso_pos = None if self.portador is not None else self.recurso
-        return Estado(tuple(sorted(self.unidades, key=lambda u: u.id)),
-                      recurso_pos, self.portador, self.turno)
+        unidades = tuple(sorted(self.unidades, key=lambda u: u.id))
+        portador, recurso_pos = self.portador, (None if self.portador is not None else self.recurso)
+        if portador is None:
+            # Regla R3 aplicada al estado inicial: una unidad que EMPIEZA sobre el recurso lo recoge.
+            sobre = [u for u in unidades if (u.fila, u.columna) == self.recurso]
+            if sobre:
+                portador, recurso_pos = sobre[0].id, None
+        return Estado(unidades, recurso_pos, portador, self.turno)
+ 
