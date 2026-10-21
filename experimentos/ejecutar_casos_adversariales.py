@@ -1,5 +1,4 @@
-"""Ejecución y reporte de los experimentos adversariales: Casos 7, 8, 9 y 10.
-Uso: python experimentos/ejecutar_casos_adversariales.py
+"""Ejecución y reporte de los experimentos adversariales
 """
 import os
 import sys
@@ -14,32 +13,38 @@ DIR_MINIMOS = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos
 if not os.path.isdir(DIR_MINIMOS):
     DIR_MINIMOS = os.path.join(os.path.dirname(__file__), "..", "escenarios", "casos_minimos")
 
+def cargar(nombre):
+    escenario = cargar_escenario(os.path.join(DIR_MINIMOS, nombre))
+    return escenario, Reglas(escenario), escenario.estado_inicial()
 
+def imprimir(res):
+    print(
+        f"{res.algoritmo:<10} "
+        f"accion={res.accion} "
+        f"valor={res.valor:.2f} "
+        f"generados={res.nodos_generados} "
+        f"evaluados={res.nodos_evaluados} "
+        f"podados={res.nodos_podados} "
+        f"tiempo_ms={res.tiempo_ms:.3f}"
+    )
 def demo_caso7():
     print("=" * 70)
     print("CASO 7: Decisión Adversarial (Interceptación táctica vs correr ciegamente)")
     print("=" * 70)
-    esc = cargar_escenario(os.path.join(DIR_MINIMOS, "caso07_decision_adversarial.json"))
-    r = Reglas(esc)
-    s = esc.estado_inicial()
+    esc, r, s = cargar("caso07_decision_adversarial.json")
     res = alfa_beta(s, r, esc, profundidad_maxima=3)
     print(f"Estado inicial: Turno={s.turno}, Portador rival={s.portador}")
     print(f"Acción recomendada por Alfa-Beta: {res.accion}")
     print(f"Valor Minimax: {res.valor:.2f}")
-    print("Explicación táctica: A1 decide entrar a la casilla del portador B1 para interceptarlo,")
-    print("eliminando la unidad enemiga y recuperando el recurso según la Regla R4.\n")
 
 
 def demo_caso8():
     print("=" * 70)
     print("CASO 8: Minimax frente a Poda Alfa-Beta")
     print("=" * 70)
-    esc = cargar_escenario(os.path.join(DIR_MINIMOS, "caso08_minimax_vs_alfa_beta.json"))
-    r = Reglas(esc)
-    s = esc.estado_inicial()
+    esc, r, s = cargar("caso08_minimax_vs_alfa_beta.json")
     res_mm = minimax(s, r, esc, profundidad_maxima=3, orden_acciones="estandar")
     res_ab = alfa_beta(s, r, esc, profundidad_maxima=3, orden_acciones="estandar")
-
     print(f"{'Algoritmo':<12} | {'Acción':<22} | {'Valor':<8} | {'Nodos Eval':<10} | {'Podas':<8} | {'Tiempo ms':<10}")
     print("-" * 80)
     print(f"{res_mm.algoritmo:<12} | {str(res_mm.accion):<22} | {res_mm.valor:<8.2f} | {res_mm.nodos_evaluados:<10} | {res_mm.nodos_podados:<8} | {res_mm.tiempo_ms:<10.3f}")
@@ -64,7 +69,10 @@ def demo_caso9():
     for orden in ("estandar", "inverso", "heuristico"):
         res = alfa_beta(s, r, esc, profundidad_maxima=3, orden_acciones=orden)
         print(f"{orden:<12} | {res.nodos_evaluados:<12} | {res.nodos_podados:<14} | {res.tiempo_ms:<10.3f}")
-    print("\nConclusión: El orden heurístico (mejores acciones primero) maximiza los cortes")
+    print(
+    "\nConclusión: el orden heurístico evaluó menos nodos en esta ejecución. "
+    "El número de nodos podados y el tiempo también dependen del orden "
+    "de exploración; estos resultados corresponden a este escenario.\n")
     print("prematuros, evaluando significativamente menos ramas que el orden inverso.\n")
 
 

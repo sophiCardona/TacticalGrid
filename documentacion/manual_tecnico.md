@@ -1257,7 +1257,7 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 
 - No hay pruebas automatizadas de la interfaz gráfica.
 - No hay pruebas de `interfaz/tablero.py`, `interfaz/graficas.py` ni de los flujos de `App` (aunque parte de la lógica se ejerce indirectamente desde los tests de algoritmos y reglas).
-- No hay pruebas de Beam Search ni de Minimax/alfa-beta.
+- En la versión inicial documentada no había pruebas de Beam Search ni de Minimax/alfa-beta. Para el componente adversarial se añadieron pruebas en `tests/test_minimax.py`; Beam Search aún requiere una matriz de pruebas específica para k=1,2,4,8.
 - No hay medición de cobertura.
 - No hay integración continua configurada.
 
@@ -1612,13 +1612,12 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 
 | Elemento | Evidencia | Estado |
 |---|---|---|
-| Beam Search | Implementado en `algoritmos/beam_search.py` con decorador `@registrar("BEAM_SEARCH")`, soporta tamaño de haz variable `k` | **Implementado** (verificado en Caso 5 con k=1, 2, 4, 8) |
-| Comparación con `k` | `App._parametros` envía `k` y `beam_search` lo consume para podar el haz | **Implementado** |
-| Minimax | La tarea adversarial solo lista acciones legales; los textos de la interfaz lo declaran pendiente | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
-| Alfa-beta | Mismo caso que Minimax | **Pendiente de implementación** — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
-| Controlador de partida por IA | El único controlador no humano es «Azar (provisional)» (`turno_ia` elige aleatoriamente) | Parcial |
-| Integrantes del proyecto | `README.md` dice «(completar con los nombres del equipo)» | **Pendiente** |
-| Contenido de `docs/` y `heuristicas/` | Directorios vacíos | **Pendiente** |
+| Beam Search | `algoritmos/beam_search.py` registra el algoritmo | Implementado; falta completar pruebas comparativas para k=1,2,4,8 |
+| Comparación con `k` | `algoritmos/beam_search.py` acepta el ancho de haz | Parcial: falta ejecutar y registrar todos los valores exigidos |
+| Minimax | `algoritmos/minimax.py`, interfaz y `tests/test_minimax.py` | Implementado y probado en los escenarios 7–10 |
+| Alfa-beta | `algoritmos/minimax.py`, interfaz y reporte experimental | Implementado y probado en los escenarios 7–10 |
+| Controlador de partida por IA | `turno_ia` admite Humano, Azar, Minimax y Alfa-Beta | Implementado |
+
 
 ### 15.2 Deuda técnica y limitaciones verificables
 
@@ -1630,15 +1629,15 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 | Docstrings con validación incompleta | Varios métodos contienen `Student validation: (completar)` — `[COMPLETAR CUANDO SE IMPLEMENTE]` |
 | Campo `tipo` de unidades | Se acepta en el JSON pero no se modela en `Unidad` ni se usa en reglas |
 | `version` sin validación de valor | Solo se exige la clave |
-| Bases y recurso sobre obstáculos | El validador no comprueba transitabilidad de bases ni del recurso; solo de unidades |
-| Generador de casos y carpeta de salida | `generar_casos_minimos.py` usa `casos_minimos`; la carpeta versionada es `casos minimos` |
+| Bases y recurso sobre obstáculos | No se rechazan (el PDF solo prohíbe unidades sobre celdas no transitables); el validador emite un **aviso** no bloqueante (`advertencias_datos`) |
+| Generador de casos | `generar_casos_minimos.py` solo genera los casos 1, 5 y 6 (el resto se editó a mano); ya escribe en `casos minimos` |
 | Crecimiento del historial | El historial se mantiene en memoria y crece con cada ejecución; cada ejecución de A* agrega una entrada por heurística ejecutada |
 | Costo en BFS/DFS | El costo reportado corresponde al camino hallado; no se optimiza por costo |
 | Condiciones previas no verificadas en tiempo de ejecución | Varias funciones asumen precondiciones (`Reglas.aplicar`, `reconstruir_camino`, `Mapa.costo`) y pueden lanzar excepciones si se violan |
 | Mediciones de tiempo | `tiempo_ms` mide solo la llamada al algoritmo, no la verificación ni la interfaz |
-| Escenario `caso05_beam_search.json` | No ejecutable con los algoritmos registrados; la interfaz informaría «Algoritmo pendiente» |
+| Escenario `caso05_beam_search.json` | Ejecutable; k = 1 y 2 no hallan ruta, k = 4 y 8 sí (ver informe técnico) |
 | Rutas absolutas en el manual | Las rutas citadas son relativas a la raíz del repositorio |
-| Heurística euclidiana | Ausente en la versión actual; `git log -S "h_euclidiana"` registra su eliminación en el commit `e3561f5` y no hay referencias actuales |
+| Heurística euclidiana | Presente en `a_estrella.py` como tercera heurística de comparación |
 
 ### 15.3 Aspectos no verificados
 
