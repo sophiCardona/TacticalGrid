@@ -16,7 +16,7 @@ from interfaz.tablero import (COLOR_BANDO, FONDO, MARCOS, OBJETIVO, ORO, PANEL, 
 from juego.problema_navegacion import ProblemaNavegacion
 from juego.reglas import Reglas
 from verificacion.verificador import verificar_camino
-from algoritmos.minimax import minimax, alfa_beta
+#from algoritmos.minimax import minimax, alfa_beta
 
 TAREAS = {"Búsqueda de ruta": "busqueda", "Partida por turnos": "partida", "Decisión adversarial": "adversarial"}
 MODO_A_TAREA = {v: k for k, v in TAREAS.items()}

@@ -34,7 +34,9 @@
    - [8.3 Panel de Comparación de Algoritmos](#83-panel-de-comparación-de-algoritmos)
    - [8.4 Panel de Escenario y Registro de Eventos (Logs)](#84-panel-de-escenario-y-registro-de-eventos-logs)
 9. [Guía para Reproducir los Casos Mínimos de Evaluación](#9-guía-para-reproducir-los-casos-mínimos-de-evaluación)
-10. [Preguntas Frecuentes y Solución de Problemas](#10-preguntas-frecuentes-y-solución-de-problemas)
+10. [Escenarios Robustos de Evaluación](#10-escenarios-robustos-de-evaluación)
+11. [Escenarios Inválidos (Rechazo Atómico)](#11-escenarios-inválidos-rechazo-atómico)
+12. [Preguntas Frecuentes y Solución de Problemas](#12-preguntas-frecuentes-y-solución-de-problemas)
 
 ---
 
@@ -327,7 +329,55 @@ A continuación se indica cómo cargar y demostrar ante el profesor cada uno de 
 
 ---
 
-## 10. Preguntas Frecuentes y Solución de Problemas
+## 10. Escenarios Robustos de Evaluación
+
+Los escenarios robustos se encuentran en la carpeta `escenarios/casos_robustos/`. Todos son JSON **válidos** y su propósito es someter a la aplicación a situaciones límite: mapas no cuadrados, metas inalcanzables, unidades encerradas, costos fraccionarios, dimensiones y nombres de terreno nuevos, tableros grandes y estados iniciales ya resueltos.
+
+Para utilizarlos, cargue el archivo con **`Cargar JSON…`** y observe el comportamiento. Los escenarios con `prueba.modo = "busqueda"` ejecutan la búsqueda automáticamente en *Modo JSON*; los de `prueba.modo = "partida"` cargan directamente la partida.
+
+| Archivo (`escenarios/casos_robustos/`) | Contenido | Qué debe observarse |
+| :--- | :--- | :--- |
+| `r01_meta_inalcanzable.json` | Mapa 20×20; meta `(15,15)` rodeada por muros | Ningún algoritmo encuentra camino ni se cuelga: `Resultados` muestra **sin éxito**. |
+| `r02_inicio_igual_meta.json` | A1 inicia en `(5,5)` y la meta es `(5,5)` | Éxito inmediato con **longitud 0** y **costo 0**. |
+| `r03_corredor_1x20.json` | Mapa no cuadrado de 1×20 (camino y pasto) | Un único camino de **19 movimientos** y costo **29**; todos los algoritmos coinciden. |
+| `r04_unidad_encerrada.json` | A1 en `(5,5)` rodeada de muros | Las búsquedas fallan. En partida, A1 solo puede **ESPERAR** (11 acciones legales para el bando A). |
+| `r05_objetivo_en_muro.json` | La prueba apunta a `(10,10)`, que es un muro | La búsqueda se **rechaza** con un mensaje claro antes de ejecutar el algoritmo. |
+| `r06_costos_fraccionarios.json` | Autopista de costo `0.5` en la fila 2 | Camino de **21 movimientos** y costo **11.5**; A* con Manhattan iguala el costo de UCS. |
+| `r07_dimensiones_y_nombres_nuevos.json` | Mapa 8×12 con terrenos `sendero`, `arena`, `agua` y `roca`; 4 unidades por bando y campos extra | El escenario **carga sin errores**; los costos se toman del JSON y UCS y A* coinciden en costo. |
+| `r08_mapa_grande_40x40.json` | Mapa 40×40 con terreno aleatorio (semilla fija) y ~5 % de muros | Todos los algoritmos hallan solución en **menos de 5 s**; UCS y A* coinciden en costo. |
+| `r09_portador_en_su_base.json` | A1 lleva el recurso y está sobre la base A | La partida ya está **ganada por el bando A** al cargar. |
+| `r10_unidad_sobre_el_recurso.json` | A1 inicia sobre el recurso con `portador_recurso: null` | A1 aparece como **portadora** y todavía no hay ganador. |
+
+> [!NOTE]
+> Si alguno de estos archivos se muestra como inválido, se trata de un defecto de validación: estos escenarios fueron construidos para ser aceptados.
+
+---
+
+## 11. Escenarios Inválidos (Rechazo Atómico)
+
+La carpeta `escenarios/casos_invalidos/` contiene un archivo por cada regla de validación incumplida. El comportamiento esperado es siempre el mismo: **rechazo atómico**, es decir, el escenario anterior permanece cargado y sin modificaciones, se muestra una alerta y la pestaña **`Escenario`** enumera los errores detectados.
+
+| Archivo (`escenarios/casos_invalidos/`) | Regla que incumple | Fragmento esperado del error |
+| :--- | :--- | :--- |
+| `inv01_dimensiones_inconsistentes.json` | `mapa.filas` no coincide con el terreno | `mapa.filas es 5` |
+| `inv02_terreno_inexistente.json` | El terreno usa un tipo no declarado | `no existe en tipos_terreno` |
+| `inv03_costo_cero.json` | Un terreno transitable tiene costo `0` | `costo positivo` |
+| `inv04_base_fuera_del_mapa.json` | La base A queda fuera de la cuadrícula | `bases.A est` |
+| `inv05_unidad_sobre_muro.json` | Una unidad inicia sobre una celda no transitable | `no transitable` |
+| `inv06_id_repetido.json` | Dos unidades comparten el mismo identificador | `repetido` |
+| `inv07_bando_invalido.json` | Una unidad declara un bando distinto de A o B | `bando debe ser A o B` |
+| `inv08_turno_invalido.json` | El turno inicial no es A ni B | `turno debe ser A o B` |
+| `inv09_portador_inexistente.json` | El portador no corresponde a una unidad existente | `no es una unidad existente` |
+| `inv10_json_mal_formado.json` | El archivo no es un JSON sintácticamente válido | `JSON mal formado` |
+| `inv11_falta_campo_obligatorio.json` | Falta la sección `bases` | `Faltan campos obligatorios` |
+| `inv12_recurso_fuera_del_mapa.json` | El recurso está fuera de los límites | `recurso est` |
+
+> [!IMPORTANT]
+> Cargue estos archivos uno por uno y verifique que el tablero **no cambie**. Si el escenario anterior desaparece o se reemplaza, el mecanismo de rechazo atómico no está funcionando correctamente.
+
+---
+
+## 12. Preguntas Frecuentes y Solución de Problemas
 
 ### 1. ¿Por qué al hacer clic en el mapa no cambia la celda objetivo?
 Verifique que esté activado el **Modo Exploración** en la barra superior. En *Modo JSON*, los controles se bloquean deliberadamente para respetar el contrato del archivo cargado.

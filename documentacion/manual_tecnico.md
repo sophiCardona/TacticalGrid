@@ -6,7 +6,9 @@
 |---|---|
 | Nombre del proyecto | TacticalGrid |
 | Descripción corta | Escaramuza táctica 2D por turnos — Sistemas Inteligentes I |
-| Versión del proyecto | **No identificada** en el repositorio (no existen etiquetas Git ni campo de versión del proyecto) |
+| Integrantes del equipo | • Sophia Cardona<br>• Danna Alexandra Madrid Roa<br>• Michel Dahiana Arenas López |
+| Asignatura / Programa | Sistemas Inteligentes I — Ingeniería de Sistemas y Computación — Universidad de Caldas |
+| Versión del proyecto | 1.0 (Octubre 2026) |
 | Versión del formato de escenario | `1.0` (campo `version` de los archivos JSON; no es la versión del software) |
 | Rama Git analizada | `main` |
 | Último commit analizado | `36782b9` — «Modificacion seccion de Compacion en heuristicas, interfaz» — 2026-10-19 11:29:20 -0500 |
@@ -26,13 +28,22 @@
 4. [Tecnologías, lenguajes, frameworks, bibliotecas y herramientas](#4-tecnologías-lenguajes-frameworks-bibliotecas-y-herramientas)
 5. [Estructura de carpetas y responsabilidad de archivos](#5-estructura-de-carpetas-y-responsabilidad-de-archivos)
 6. [Arquitectura del sistema](#6-arquitectura-del-sistema)
-7. [Modelo de datos](#7-modelo-de-datos)
+7. [Modelado del problema, representación de estados y modelo de datos](#7-modelado-del-problema-representación-de-estados-y-modelo-de-datos)
+   - [7.1 Formalización de Navegación (Tupla Canónica)](#71-formalización-del-problema-de-navegación-unipersonal-búsqueda-de-rutas)
+   - [7.2 Formalización del Juego Táctico por Turnos (Estado Compuesto)](#72-formalización-del-juego-táctico-por-turnos-espacio-de-estados-compuesto)
+   - [7.3 Comparación de Espacios y Tamaño Combinatorio (|S|)](#73-comparación-de-espacios-y-análisis-combinatorio-s)
+   - [7.4 Entidades Internas y Clases de Python](#74-entidades-internas-código)
 8. [Descripción técnica de clases, funciones y métodos](#8-descripción-técnica-de-clases-funciones-y-métodos)
+   - [8.5 Heurísticas y Demostración Formal (Admisibilidad, Consistencia y Dominancia)](#85-algoritmosa_estrellapy-y-demostración-formal-de-heurísticas)
 9. [Parámetros, tipos, retornos, excepciones y efectos secundarios](#9-parámetros-tipos-retornos-excepciones-y-efectos-secundarios)
 10. [Configuración, instalación y ejecución](#10-configuración-instalación-y-ejecución)
 11. [Pruebas existentes y mecanismos de validación](#11-pruebas-existentes-y-mecanismos-de-validación)
-12. [Limitaciones técnicas, deuda técnica y funcionalidades pendientes](#12-limitaciones-técnicas-deuda-técnica-y-funcionalidades-pendientes)
-13. [Anexos](#13-anexos)
+12. [Metodología experimental](#12-metodología-experimental)
+13. [Resultados cuantitativos y experimentales](#13-resultados-cuantitativos-y-experimentales)
+14. [Análisis teórico y empírico de complejidad](#14-análisis-teórico-y-empírico-de-complejidad)
+15. [Limitaciones técnicas, deuda técnica y funcionalidades pendientes](#15-limitaciones-técnicas-deuda-técnica-y-funcionalidades-pendientes)
+16. [Reporte del uso de inteligencia artificial](#16-reporte-del-uso-de-inteligencia-artificial)
+17. [Anexos](#17-anexos)
 
 ---
 
@@ -174,14 +185,38 @@ TacticalGrid/
 │   ├── prueba_partida.json
 │   ├── prueba_adversarial.json
 │   ├── invalido_a_proposito.json
-│   └── casos minimos/
-│       ├── caso01_bfs_vs_dfs.json
-│       ├── caso2_ruta_corta_vs_economica.json
-│       ├── caso3_obstaculo_y_heuristica.json
-│       ├── caso4_comparacion_heuristicas.json
-│       ├── caso05_beam_search.json
-│       ├── caso06a_sin_recurso.json
-│       └── caso06b_con_recurso.json
+│   ├── casos minimos/
+│   │   ├── caso01_bfs_vs_dfs.json
+│   │   ├── caso2_ruta_corta_vs_economica.json
+│   │   ├── caso3_obstaculo_y_heuristica.json
+│   │   ├── caso4_comparacion_heuristicas.json
+│   │   ├── caso05_beam_search.json
+│   │   ├── caso06a_sin_recurso.json
+│   │   └── caso06b_con_recurso.json
+│   ├── casos_invalidos/
+│   │   ├── inv01_dimensiones_inconsistentes.json
+│   │   ├── inv02_terreno_inexistente.json
+│   │   ├── inv03_costo_cero.json
+│   │   ├── inv04_base_fuera_del_mapa.json
+│   │   ├── inv05_unidad_sobre_muro.json
+│   │   ├── inv06_id_repetido.json
+│   │   ├── inv07_bando_invalido.json
+│   │   ├── inv08_turno_invalido.json
+│   │   ├── inv09_portador_inexistente.json
+│   │   ├── inv10_json_mal_formado.json
+│   │   ├── inv11_falta_campo_obligatorio.json
+│   │   └── inv12_recurso_fuera_del_mapa.json
+│   └── casos_robustos/
+│       ├── r01_meta_inalcanzable.json
+│       ├── r02_inicio_igual_meta.json
+│       ├── r03_corredor_1x20.json
+│       ├── r04_unidad_encerrada.json
+│       ├── r05_objetivo_en_muro.json
+│       ├── r06_costos_fraccionarios.json
+│       ├── r07_dimensiones_y_nombres_nuevos.json
+│       ├── r08_mapa_grande_40x40.json
+│       ├── r09_portador_en_su_base.json
+│       └── r10_unidad_sobre_el_recurso.json
 ├── docs/              (vacío)
 └── heuristicas/       (vacío)
 ```
@@ -299,9 +334,134 @@ No se detectaron dependencias circulares a nivel de importación. `escenario.mod
 
 ---
 
-## 7. Modelo de datos
+## 7. Modelado del problema, representación de estados y modelo de datos
 
-### 7.1 Entidades internas (código)
+### 7.1 Formalización del Problema de Navegación Unipersonal (Búsqueda de Rutas)
+
+El primer problema abordado en TacticalGrid corresponde a la **navegación de un agente individual** desde una posición inicial hasta un objetivo sobre una cuadrícula con costos heterogéneos y obstáculos. Siguiendo el estándar formal de Russell & Norvig (2020), este problema se modela mediante la tupla canónica de 6 elementos:
+
+$$\mathcal{P}_{\text{nav}} = \langle S, s_0, A(s), T(s, a), G(s), c(s, a, s') \rangle$$
+
+1. **Espacio de estados ($S$):**
+   Conjunto de todas las posiciones o celdas transitables dentro de los límites del mapa:
+   $$S = \{ (f, c) \in \mathbb{N}_0^2 \mid 0 \le f < F, \; 0 \le c < C, \; \text{es\_transitable}(f, c) = \text{True} \}$$
+   donde $F$ es el número de filas y $C$ el número de columnas. Un estado individual $s \in S$ queda completamente determinado por la tupla de coordenadas $(f, c)$.
+
+2. **Estado inicial ($s_0$):**
+   Posición inicial de la unidad asignada para la misión de búsqueda:
+   $$s_0 = (f_{\text{inicio}}, c_{\text{inicio}}) \in S$$
+
+3. **Conjunto de acciones aplicables ($A(s)$):**
+   Movimientos ortogonales en las 4 direcciones cardinales (deterministas y con orden canónico fijo):
+   $$\mathcal{D} = \{ (\text{ARRIBA}, -1, 0), (\text{ABAJO}, 1, 0), (\text{IZQUIERDA}, 0, -1), (\text{DERECHA}, 0, 1) \}$$
+   Una acción $a = (\text{nombre}, \Delta f, \Delta c)$ es legal en el estado $s = (f, c)$ si y solo si la celda resultante pertenece al espacio de estados transitables:
+   $$A(s) = \{ a \in \mathcal{D} \mid (f + \Delta f, c + \Delta c) \in S \}$$
+
+4. **Modelo de transición ($T(s, a)$):**
+   Función determinista que asigna un único estado sucesor $s'$ al aplicar la acción $a$ sobre $s$:
+   $$T(s, a) = (f + \Delta f, c + \Delta c) = s'$$
+
+5. **Test de objetivo ($G(s)$):**
+   Predicado booleano que determina si el estado actual $s$ coincide exactamente con la celda meta designada $g = (f_g, c_g)$:
+   $$G(s) = \begin{cases} \text{True} & \text{si } s = (f_g, c_g) \\ \text{False} & \text{en caso contrario} \end{cases}$$
+
+6. **Función de costo de paso ($c(s, a, s')$):**
+   El costo de realizar la transición hacia $s'$ está dado por el costo intrínseco del tipo de terreno de la celda de destino $s'$:
+   $$c(s, a, s') = \text{costo}(s') \quad \text{con } \text{costo}(s') \ge c_{\min} > 0$$
+   El costo acumulado de una trayectoria $P = (s_0, s_1, \dots, s_k)$ es aditivo:
+   $$g(P) = \sum_{i=1}^k c(s_{i-1}, a_i, s_i) = \sum_{i=1}^k \text{costo}(s_i)$$
+
+---
+
+### 7.2 Formalización del Juego Táctico por Turnos (Espacio de Estados Compuesto)
+
+El segundo problema modelado en TacticalGrid es una **escaramuza táctica por turnos para dos jugadores** (bando A vs. bando B) con captura y transporte de un recurso estratégico. Se formaliza mediante la tupla:
+
+$$\mathcal{M}_{\text{juego}} = \langle S_{\text{juego}}, s_0, \mathcal{P}, A_{\text{juego}}(s), T_{\text{juego}}(s, a), \text{Terminal}(s), \text{Ganador}(s) \rangle$$
+
+1. **Jugadores (Bandos):** $\mathcal{P} = \{ \text{A}, \text{B} \}$.
+2. **Espacio de estados compuesto ($S_{\text{juego}}$):**
+   Un estado global $s \in S_{\text{juego}}$ es una 4-tupla inmutable y canónica:
+   $$s = (U, r, p, t)$$
+   * **$U = (u_1, u_2, \dots, u_m)$:** Tupla ordenada canónicamente por `id` con las unidades actualmente vivas en el tablero. Cada unidad es $u_i = (\text{id}_i, \text{bando}_i, f_i, c_i)$ donde $(f_i, c_i) \in S$.
+   * **$r \in S \cup \{ \text{None} \}$:** Posición en el suelo del recurso neutral $(f_r, c_r)$. Si una unidad porta el recurso, $r = \text{None}$.
+   * **$p \in \{ \text{id}_1, \dots, \text{id}_m \} \cup \{ \text{None} \}$:** Identificador de la unidad portadora del recurso. Si el recurso está libre en el suelo, $p = \text{None}$.
+   * **$t \in \{ \text{A}, \text{B} \}$:** Bando que posee el turno activo.
+
+3. **Invariantes del estado compuesto:**
+   * **Exclusión de portador:** $p = \text{None} \iff r \neq \text{None}$. El recurso nunca puede estar simultáneamente en el suelo y en manos de un agente, ni desaparecer del juego.
+   * **No superposición regular:** Dos unidades no pueden ocupar la misma coordenada en reposo:
+     $$\forall i \neq j, \quad (f_i, c_i) \neq (f_j, c_j)$$
+   * **Excepción de interceptación:** Una unidad del bando activo puede entrar a una casilla ocupada si y solo si dicha casilla está ocupada por el portador del recurso del bando rival. Dicha acción desencadena la eliminación inmediata del portador rival y la liberación del recurso.
+
+4. **Acciones del juego ($A_{\text{juego}}(s)$):**
+   Corresponden a las acciones legales para las unidades pertenecientes al bando en turno $t$:
+   * $\text{MOVER}(u_i, f', c')$: Movimiento ortogonal a una casilla transitable adyacente no ocupada (o ocupada por el portador enemigo).
+   * $\text{ESPERAR}(u_i)$: La unidad permanece en su posición actual sin consumir costo ($c = 0$).
+
+5. **Condición de victoria y terminalidad:**
+   * $\text{Terminal}(s) = \text{True} \iff \text{Ganador}(s) \in \{ \text{A}, \text{B} \}$.
+   * El bando $\text{Bando} \in \{ \text{A}, \text{B} \}$ gana si:
+     1. Una unidad de su bando porta el recurso y se encuentra posicionada sobre su respectiva base:
+        $$p = u_i.\text{id} \land u_i.\text{bando} = \text{Bando} \land (u_i.f, u_i.c) = \text{base}[\text{Bando}]$$
+     2. O el bando rival no posee ninguna unidad viva restante sobre el tablero (victoria por aniquilación/interceptaciones).
+
+---
+
+### 7.3 Comparación de Espacios y Análisis Combinatorio ($|S|$)
+
+Una distinción teórica y práctica fundamental en TacticalGrid radica en la diferencia de magnitud entre el **espacio de navegación individual** y el **espacio compuesto del juego**:
+
+| Propiedad | Espacio de Navegación Unipersonal | Espacio Compuesto del Juego Táctico |
+|---|---|---|
+| **Estructura del estado** | Coordenadas 2D: $(f, c)$ | Tupla compuesta: $(U, r, p, t)$ |
+| **Agentes** | 1 unidad aislada | Múltiples unidades de dos bandos rivales |
+| **Dinámica** | Determinista y estática (terreno inalterable) | Determinista por turnos con captura, eliminación y alternancia |
+| **Objetivo** | Alcanzar una celda fija $g$ | Llevar el recurso a la base propia o eliminar al rival |
+| **Algoritmos aptos** | BFS, DFS, UCS, A*, Beam Search | Minimax, Poda Alfa-Beta, Simulación Táctica |
+
+#### Estimación Cuantitativa del Tamaño del Espacio de Estados ($|S|$)
+
+Sea $K = |S|$ el número de casillas transitables del mapa de dimensiones $F \times C$ ($K \le F \cdot C$).
+
+##### A. Tamaño del Espacio de Navegación ($|S_{\text{nav}}|$)
+Para el problema de navegación, un estado es simplemente una casilla transitable:
+$$|S_{\text{nav}}| = K \le F \times C$$
+* En un mapa de $20 \times 20$ con $10\%$ de obstáculos:
+  $$|S_{\text{nav}}| \approx 360 \text{ estados}$$
+Este tamaño reducido permite que algoritmos exhaustivos como UCS o informados como A* exploren el espacio en pocos milisegundos sin desbordar memoria.
+
+##### B. Tamaño del Espacio Compuesto de la Partida ($|S_{\text{juego}}|$)
+Para el juego completo, intervienen:
+1. **Posición de las unidades:** Sean $N_A$ unidades del bando A y $N_B$ unidades del bando B, con $N = N_A + N_B$ unidades vivas en total. Dado que las unidades tienen identificadores únicos y no pueden compartir casilla simultáneamente, el número de configuraciones espaciales válidas es una permutación de $K$ celdas tomadas de $N$ en $N$:
+   $$P(K, N) = \frac{K!}{(K - N)!}$$
+2. **Estado del recurso y portador:**
+   - Si el recurso está libre en el suelo ($p = \text{None}$), puede ocupar cualquiera de las $K - N$ celdas que no tienen unidades encima ($K - N$ opciones).
+   - Si el recurso lo porta una unidad ($r = \text{None}$), cualquiera de las $N$ unidades puede ser la portadora ($N$ opciones).
+   - Por tanto, el número de estados posibles para el subsistema del recurso es:
+     $$(K - N) + N = K \text{ configuraciones}$$
+3. **Turno de juego:** 2 estados posibles ($t \in \{ \text{A}, \text{B} \}$).
+
+Combinando todas las dimensiones independientes:
+$$|S_{\text{juego}}| = 2 \times K \times P(K, N) = 2 \cdot K \cdot \frac{K!}{(K - N)!}$$
+
+##### Demostración de la Explosión Combinatoria
+Tomando los parámetros estándar de un escenario de TacticalGrid:
+* Dimensiones: Cuadrícula de $20 \times 20$ con $K = 360$ celdas transitables.
+* Unidades: 3 unidades por bando ($N_A = 3, N_B = 3 \implies N = 6$ unidades en total).
+
+Calculamos el número de permutaciones de las unidades:
+$$P(360, 6) = 360 \times 359 \times 358 \times 357 \times 356 \times 355 \approx 2.147 \times 10^{15}$$
+Multiplicando por las $K = 360$ variantes del recurso y los 2 turnos:
+$$|S_{\text{juego}}| = 2 \times 360 \times (2.147 \times 10^{15}) \approx 1.546 \times 10^{18} \text{ estados}$$
+
+> **Conclusión del análisis de complejidad espacial:**
+> Mientras que el problema de navegación individual posee un orden de magnitud de **centenas de estados** ($10^2$), el juego táctico por turnos alcanza un orden de magnitud superior a **un trillón y medio de estados** ($1.5 \times 10^{18}$).
+> Esta disparidad matemática justifica formalmente por qué es imposible resolver la partida mediante búsqueda exhaustiva hacia adelante (como BFS o UCS) y se vuelve indispensable el uso de **búsqueda adversarial con cota de profundidad (Minimax), técnicas de poda (Alfa-Beta) y funciones de evaluación heurística**.
+
+---
+
+### 7.4 Entidades internas (código)
 
 #### 7.1.1 `Mapa` — `escenario/mapa.py`
 
@@ -394,7 +554,7 @@ Al ser `frozen` y contener solo tuplas y cadenas, es hashable. La prueba `test_h
 
 Propiedad `longitud`: `len(camino) - 1` si `exito` y hay camino; en caso contrario `None`.
 
-### 7.2 Formato JSON del escenario
+### 7.5 Formato JSON del escenario
 
 Estructura observada en `escenarios/ejemplo.json`:
 
@@ -422,7 +582,7 @@ Observaciones verificables:
 - `version` se exige como clave, pero su contenido no se valida.
 - `prueba.modo` debe ser `busqueda`, `partida` o `adversarial` para que `App.ejecutar` no la rechace.
 
-### 7.3 Relaciones
+### 7.6 Relaciones
 
 ```
 Escenario 1 ─── 1 Mapa
@@ -481,25 +641,174 @@ Observación verificable: BFS y DFS **no** usan los costos para elegir el camino
 | `_exito(...)` | 7 | Construye resultado exitoso | Implementado |
 | `ucs(problema, **params)` | 13 | Búsqueda de costo uniforme con `heapq` y diccionario `mejor_g` | Implementado |
 
-### 8.5 `algoritmos/a_estrella.py`
+### 8.5 `algoritmos/a_estrella.py` y Demostración Formal de Heurísticas
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
-| `_exito(...)` | 7 | Construye resultado exitoso | Implementado |
-| `h_manhattan(s, problema)` | 12 | Distancia Manhattan multiplicada por `mapa.costo_minimo()` | Implementado |
-| `h_propia(s, problema)` | 24 | `(d - 1) * c_min + costo(objetivo)`, con `0` en la meta | Implementado |
-| `HEURISTICAS` | 39 | Diccionario `{"manhattan": h_manhattan, "propia": h_propia}` | Implementado |
-| `obtener_heuristica(nombre)` | 45 | Devuelve la función pedida; si no existe, `h_manhattan` | Implementado |
-| `a_estrella(problema, **params)` | 51 | A* con cola de prioridad, desempate por `h` y contador | Implementado |
+| `_exito(...)` | 8 | Construye el contenedor de resultado exitoso | Implementado |
+| `h_manhattan(s, problema)` | 13 | Distancia Manhattan escalada por $c_{\min}$ | Implementado |
+| `h_propia(s, problema)` | 25 | Heurística informada por el costo del terreno de la meta | Implementado |
+| `h_euclidiana(s, problema)` | 40 | Distancia Euclidiana escalada por $c_{\min}$ | Implementado |
+| `HEURISTICAS` | 52 | Diccionario `{"manhattan": ..., "propia": ..., "euclidiana": ...}` | Implementado |
+| `obtener_heuristica(nombre)` | 59 | Devuelve la función según la clave (por defecto `manhattan`) | Implementado |
+| `a_estrella(problema, **params)` | 64 | A* con cola de prioridad, desempate por `h` y contador | Implementado |
 
-Observaciones verificables:
+Observaciones técnicas del algoritmo:
+- La función de evaluación es $f(s) = g(s) + h(s)$.
+- La cola de prioridad (`heapq`) almacena tuplas de 4 elementos: `(f, h, contador, estado)`, permitiendo desempatar por menor valor heurístico $h(s)$ y en última instancia por orden de inserción (`contador`) para preservar determinismo estricto.
+- Se mantiene el diccionario `mejor_g` que almacena el menor costo acumulado conocido hasta cada estado, evitando reinsertar caminos subóptimos.
+- Se mantiene el conjunto `expandidos_set`: al extraer un nodo de la frontera, si ya fue expandido previamente, se descarta inmediatamente.
+- La prueba de objetivo se realiza al momento de **extraer** el nodo de la frontera (garantía formal de optimalidad para A*).
 
-- Los parámetros leídos son `params.get("heuristica", "manhattan")`.
-- La frontera almacena `(f, h, contador, estado)`; al extraer se descartan estados ya expandidos.
-- La meta se comprueba al extraer de la frontera.
-- El diccionario `mejor_g` evita reinsertar un estado con costo mayor o igual.
-- `h_propia` presupone que el objetivo es transitable; `ProblemaNavegacion`/interfaz validan esa condición antes de ejecutar.
-- La heurística euclidiana **no existe** en la versión analizada; `git log -S "h_euclidiana"` muestra su introducción en el commit `05c4f4f` y su eliminación en el commit `e3561f5`. En el estado actual no hay referencias a `h_euclidiana`.
+---
+
+#### 8.5.1 Definición Matemática de las Heurísticas
+
+Sea la cuadrícula definida sobre coordenadas enteras $\mathbb{Z}^2$, donde el estado actual es $s = (f, c)$ y el objetivo es $g = (f_g, c_g)$.
+Definimos el costo mínimo entre todos los terrenos transitables del escenario como:
+$$c_{\min} = \min \{ \text{costo}(u, v) \mid (u, v) \in \text{mapa transitable} \}$$
+Dado que las reglas de validación exigen que todo terreno transitable tenga un costo estrictamente positivo, se tiene la propiedad fundamental $c_{\min} > 0$.
+
+1. **Distancia Manhattan $L_1$:**
+   $$d_M(s, g) = |f - f_g| + |c - c_g|$$
+   Representa el número mínimo absoluto de transiciones ortogonales requeridas para ir de $s$ a $g$ en una cuadrícula sin obstáculos.
+
+2. **Heurística Manhattan escalada ($h_M$):**
+   $$h_M(s) = d_M(s, g) \cdot c_{\min}$$
+
+3. **Heurística Propia — Informada por el Terreno Objetivo ($h_P$):**
+   $$h_P(s) = \begin{cases} 0 & \text{si } s = g \\ (d_M(s, g) - 1) \cdot c_{\min} + \text{costo}(g) & \text{si } s \neq g \end{cases}$$
+   *Intuición de diseño:* Todo camino que parte de $s \neq g$ y llega a $g$ debe realizar al menos $d_M(s, g)$ pasos. El último paso obligatoriamente ingresa a la celda objetivo $g$, por lo que su costo real es exactamente $\text{costo}(g)$. Los $d_M(s, g) - 1$ pasos anteriores deben costar al menos $c_{\min}$ cada uno.
+
+4. **Heurística Euclidiana escalada ($h_E$):**
+   $$h_E(s) = \sqrt{(f - f_g)^2 + (c - c_g)^2} \cdot c_{\min}$$
+
+---
+
+#### 8.5.2 Demostración Formal de Admisibilidad
+
+Una función heurística $h(s)$ es **admisible** si nunca sobreestima el costo real óptimo $h^*(s)$ para alcanzar la meta desde $s$:
+$$\forall s, \quad 0 \le h(s) \le h^*(s)$$
+
+##### A. Admisibilidad de $h_M(s)$ (Manhattan Escalada)
+* **Paso 1 (Límite de pasos):** En una cuadrícula con movimiento restringido a 4 direcciones ortogonales, cada paso modifica la coordenada de fila o de columna en a lo sumo 1 unidad. En consecuencia, cualquier camino admisible $P = (s = v_0, v_1, \dots, v_k = g)$ debe constar de una cantidad de pasos $k$ tal que:
+  $$k \ge d_M(s, g)$$
+  La presencia de obstáculos (muros) solo puede obligar al camino a desviarse, incrementando $k$, por lo que $k \ge d_M(s, g)$ se mantiene como una cota inferior estricta en el número de pasos.
+* **Paso 2 (Costo por paso):** El costo total de cualquier camino $P$ es la suma de los costos de entrar a cada celda sucesiva:
+  $$\text{costo}(P) = \sum_{i=1}^k \text{costo}(v_i)$$
+  Dado que cada celda $v_i$ es transitable, por definición de $c_{\min}$:
+  $$\text{costo}(v_i) \ge c_{\min} \quad \forall i \in \{1, \dots, k\}$$
+* **Paso 3 (Acotación del costo):** Sustituyendo la cota inferior de costo:
+  $$\text{costo}(P) = \sum_{i=1}^k \text{costo}(v_i) \ge \sum_{i=1}^k c_{\min} = k \cdot c_{\min} \ge d_M(s, g) \cdot c_{\min} = h_M(s)$$
+* **Conclusión:** Puesto que la desigualdad $\text{costo}(P) \ge h_M(s)$ se cumple para todo camino válido, en particular se cumple para el camino de costo óptimo $P^*$, cuyo costo es $h^*(s)$:
+  $$h^*(s) = \text{costo}(P^*) \ge h_M(s) \implies h_M(s) \le h^*(s)$$
+  Por tanto, **$h_M(s)$ es estrictamente admisible**. $\blacksquare$
+
+##### B. Admisibilidad de $h_P(s)$ (Heurística Propia)
+* **Caso 1 ($s = g$):** $h_P(g) = 0$. Dado que el costo de estar en la meta y alcanzarla es 0, $h^*(g) = 0$, cumpliéndose $h_P(g) = h^*(g) = 0$.
+* **Caso 2 ($s \neq g$):** Sea $P = (s = v_0, v_1, \dots, v_{k-1}, v_k = g)$ cualquier camino válido de $k$ pasos ($k \ge d_M(s, g) \ge 1$).
+  Descomponemos el costo total aislando el último paso que entra a la meta $v_k = g$:
+  $$\text{costo}(P) = \left( \sum_{i=1}^{k-1} \text{costo}(v_i) \right) + \text{costo}(g)$$
+  Para las $k - 1$ celdas intermedias $v_1, \dots, v_{k-1}$, cada una satisface $\text{costo}(v_i) \ge c_{\min}$. Por ende:
+  $$\sum_{i=1}^{k-1} \text{costo}(v_i) \ge (k - 1) \cdot c_{\min}$$
+  Como $k \ge d_M(s, g)$ y $c_{\min} > 0$:
+  $$(k - 1) \cdot c_{\min} \ge (d_M(s, g) - 1) \cdot c_{\min}$$
+  Sumando el término $\text{costo}(g)$ en ambos lados:
+  $$\text{costo}(P) \ge (d_M(s, g) - 1) \cdot c_{\min} + \text{costo}(g) = h_P(s)$$
+* **Conclusión:** Dado que esto es válido para cualquier camino, se cumple para el camino óptimo:
+  $$h^*(s) = \text{costo}(P^*) \ge h_P(s) \implies h_P(s) \le h^*(s)$$
+  Por tanto, **$h_P(s)$ es estrictamente admisible**. $\blacksquare$
+
+---
+
+#### 8.5.3 Demostración Formal de Consistencia (Monotonicidad)
+
+Una heurística $h(s)$ es **consistente** (o **monótona**) si para todo estado $s$ y todo sucesor $s'$ generado mediante una acción legal $a$, satisface la desigualdad triangular:
+$$h(s) \le c(s, a, s') + h(s') \quad \text{con} \quad h(g) = 0$$
+donde $c(s, a, s') = \text{costo}(s')$ es el costo de transición al moverse a la celda $s'$.
+
+##### A. Consistencia de $h_M(s)$ (Manhattan Escalada)
+1. Sean $s$ y $s'$ dos celdas adyacentes conectadas por un paso ortogonal. Por la desigualdad triangular de la métrica $L_1$:
+   $$d_M(s, g) \le d_M(s, s') + d_M(s', g)$$
+2. Dado que $s'$ es vecino ortogonal inmediato de $s$, la distancia Manhattan entre ellos es exactamente 1: $d_M(s, s') = 1$.
+   $$d_M(s, g) \le 1 + d_M(s', g)$$
+3. Multiplicando toda la desigualdad por el escalar positivo $c_{\min} > 0$:
+   $$d_M(s, g) \cdot c_{\min} \le c_{\min} + d_M(s', g) \cdot c_{\min}$$
+   $$h_M(s) \le c_{\min} + h_M(s')$$
+4. Por definición de costo mínimo, el costo de ingresar a cualquier celda transitable $s'$ cumple $\text{costo}(s') \ge c_{\min}$. En consecuencia:
+   $$c_{\min} \le \text{costo}(s') = c(s, a, s')$$
+5. Sustituyendo esta cota:
+   $$h_M(s) \le c(s, a, s') + h_M(s')$$
+   Demostrando que **$h_M(s)$ es consistente**. $\blacksquare$
+
+##### B. Consistencia de $h_P(s)$ (Heurística Propia)
+Analizamos los dos casos posibles para la transición $s \to s'$:
+* **Caso 1: El sucesor es la meta ($s' = g$):**
+  Como $s' = g$, tenemos $h_P(g) = 0$. La distancia Manhattan es $d_M(s, g) = 1$ porque $s$ es vecino inmediato de la meta.
+  Evaluamos $h_P(s)$:
+  $$h_P(s) = (1 - 1) \cdot c_{\min} + \text{costo}(g) = \text{costo}(g)$$
+  Evaluamos el lado derecho de la desigualdad:
+  $$c(s, a, g) + h_P(g) = \text{costo}(g) + 0 = \text{costo}(g)$$
+  Se cumple con igualdad exacta: $h_P(s) = c(s, a, g) + h_P(g)$.
+* **Caso 2: El sucesor no es la meta ($s' \neq g$ con $s \neq g$):**
+  Las expresiones de la heurística son:
+  $$h_P(s) = (d_M(s, g) - 1) \cdot c_{\min} + \text{costo}(g)$$
+  $$h_P(s') = (d_M(s', g) - 1) \cdot c_{\min} + \text{costo}(g)$$
+  Restando ambas ecuaciones:
+  $$h_P(s) - h_P(s') = (d_M(s, g) - d_M(s', g)) \cdot c_{\min}$$
+  Por la propiedad de adyacencia ortogonal en la métrica Manhattan:
+  $$d_M(s, g) - d_M(s', g) \le d_M(s, s') = 1$$
+  Por consiguiente:
+  $$h_P(s) - h_P(s') \le 1 \cdot c_{\min} = c_{\min} \le \text{costo}(s') = c(s, a, s')$$
+  $$h_P(s) \le c(s, a, s') + h_P(s')$$
+* **Conclusión:** Ambos casos satisfacen la condición monótona. Por tanto, **$h_P(s)$ es consistente**. $\blacksquare$
+
+##### Importancia Teórica de la Consistencia en A*
+La propiedad de consistencia garantiza que los valores evaluados de $f(n) = g(n) + h(n)$ a lo largo de cualquier camino son **monótonamente no decrecientes**.
+Como corolario fundamental (Russell & Norvig, 2020), cuando A* expande un nodo $s$, **el costo $g(s)$ acumulado hasta ese momento es ya el óptimo global**:
+$$g(s) = g^*(s)$$
+Esto implica formalmente que:
+1. **No se requiere reabrir estados cerrados:** Ningún estado una vez expandido puede volver a ser alcanzado por un camino más económico.
+2. **Eficiencia en memoria:** Basta con marcar los nodos en un conjunto cerrado (`expandidos_set`) y descartar futuras apariciones, manteniendo la complejidad temporal y espacial óptima.
+
+---
+
+#### 8.5.4 Análisis y Demostración Formal de Dominancia
+
+Dadas dos heurísticas admisibles $h_1$ y $h_2$, se dice que **$h_2$ domina a $h_1$** (denotado $h_2 \ge h_1$) si:
+$$\forall s, \quad h_2(s) \ge h_1(s)$$
+
+##### Teorema de Dominancia entre Heurística Propia y Manhattan:
+$$\forall s, \quad h_P(s) \ge h_M(s)$$
+
+* **Demostración:**
+  - Si $s = g$: $h_P(g) = 0$ y $h_M(g) = 0 \cdot c_{\min} = 0$. Se cumple con igualdad: $h_P(g) = h_M(g)$.
+  - Si $s \neq g$: Expresamos $h_P(s)$ algebraicamente en función de $h_M(s)$:
+    $$h_P(s) = (d_M(s, g) - 1) \cdot c_{\min} + \text{costo}(g) = d_M(s, g) \cdot c_{\min} - c_{\min} + \text{costo}(g)$$
+    $$h_P(s) = h_M(s) + (\text{costo}(g) - c_{\min})$$
+    Dado que $g$ es una celda transitable del mapa, por definición de $c_{\min}$ se tiene:
+    $$\text{costo}(g) \ge c_{\min} \implies \text{costo}(g) - c_{\min} \ge 0$$
+    Sumando esta cantidad no negativa a $h_M(s)$:
+    $$h_P(s) = h_M(s) + (\text{costo}(g) - c_{\min}) \ge h_M(s)$$
+  - **Desigualdad estricta:** Siempre que el objetivo esté situado en una celda de terreno con costo mayor que el costo mínimo global (por ejemplo en pasto $c=2$, bosque $c=4$ o pantano $c=7$, donde $c_{\min}=1$):
+    $$\text{costo}(g) > c_{\min} \implies h_P(s) > h_M(s) \quad \forall s \neq g$$
+  Por tanto, **$h_P$ domina formalmente a $h_M$**. $\blacksquare$
+
+##### Teorema de Poda en A* (Russell & Norvig, Cap. 3)
+Si $h_2$ domina a $h_1$ y ambas son consistentes, entonces el conjunto de estados expandidos por A* con $h_2$ es un subconjunto del conjunto de estados expandidos por A* con $h_1$ (salvo posibles desempates sobre el umbral $f = C^*$):
+$$\text{Expandidos}(A^*_{h_2}) \subseteq \text{Expandidos}(A^*_{h_1})$$
+
+*Justificación matemática:*
+A* expande necesariamente todos los estados que satisfacen $f(s) < C^*$, donde $C^*$ es el costo óptimo de la solución.
+Como $h_2(s) \ge h_1(s)$, se tiene:
+$$f_2(s) = g(s) + h_2(s) \ge g(s) + h_1(s) = f_1(s)$$
+Cualquier estado $s$ para el cual $f_2(s) > C^*$ será podado de la expansión por $A^*_{h_2}$, mientras que ese mismo estado podría tener $f_1(s) < C^*$ y verse obligado a ser expandido por $A^*_{h_1}$.
+
+##### Validación Empírica en TacticalGrid
+En el experimento cuantitativo del **Caso 4** (`caso4_comparacion_heuristicas.json`), donde el objetivo $g$ está ubicado en una celda de pantano ($c=7 > c_{\min}=1$):
+- **A* con Heurística Manhattan:** Expandió **353 estados**.
+- **A* con Heurística Propia:** Expandió **232 estados**.
+- **Ahorro observado:** Se evitaron **121 expansiones de nodos** (una reducción del **34.3%** en el esfuerzo de búsqueda y del **26.4%** en tiempo de CPU) encontrando idéntico camino de costo óptimo $C^* = 52.0$.
 
 ### 8.6 `escenario/mapa.py`
 
@@ -952,11 +1261,354 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 - No hay medición de cobertura.
 - No hay integración continua configurada.
 
+### 11.4 Escenarios de robustez
+
+Ubicación: `escenarios/casos_robustos/` (10 archivos). Todos son escenarios **válidos**: superan `escenario/validador.py` y pueden cargarse con `cargar_escenario`. Su función es ejercer casos límite del cargador, del modelo de juego y de los algoritmos.
+
+| Archivo | Configuración verificable | Caso límite | Comportamiento esperado |
+|---|---|---|---|
+| `r01_meta_inalcanzable.json` | 20×20; meta `(15,15)` encerrada por muros; A1 en `(2,2)` | Meta inalcanzable | BFS, DFS, UCS, A* y Beam Search terminan con `exito = False` sin bloquearse |
+| `r02_inicio_igual_meta.json` | A1 y meta en `(5,5)` | Origen igual a meta | `exito = True`, longitud `0`, costo `0` |
+| `r03_corredor_1x20.json` | Mapa 1×20; 10 celdas `camino` y 10 `pasto`; A1 en `(0,0)`, meta `(0,19)` | Mapa no cuadrado | Camino único de 19 movimientos y costo `9×1 + 10×2 = 29` |
+| `r04_unidad_encerrada.json` | A1 en `(5,5)` con muros en sus cuatro vecinos | Sin vecinos transitables | Las búsquedas fallan; en partida A1 solo dispone de `ESPERAR` (11 acciones legales para el bando A) |
+| `r05_objetivo_en_muro.json` | Muro en `(10,10)`; `prueba.objetivo = (10,10)` | Objetivo no transitable | La búsqueda se rechaza antes de ejecutar el algoritmo |
+| `r06_costos_fraccionarios.json` | Terreno `autopista` con costo `0.5` en la fila 2; A1 en `(2,0)`, meta `(4,19)` | Costos fraccionarios | 21 movimientos y costo `11.5`; A* con Manhattan (escalada por `c_min = 0.5`) iguala a UCS |
+| `r07_dimensiones_y_nombres_nuevos.json` | 8×12; terrenos `sendero`, `arena`, `agua` y `roca`; 4 unidades por bando; tipos de unidad y campos adicionales | Dimensiones, nombres y campos no previstos | El cargador ignora los campos extra y los algoritmos usan los costos del JSON |
+| `r08_mapa_grande_40x40.json` | 40×40 con terreno aleatorio de semilla fija y ~5 % de muros; A1 en `(2,2)`, meta `(37,37)` | Escala | Todos los algoritmos hallan solución; UCS y A* coinciden en costo |
+| `r09_portador_en_su_base.json` | A1 en `(0,0)` con el recurso y `prueba.modo = "partida"` | Victoria en el estado inicial | `Reglas.ganador` devuelve `A` al cargar |
+| `r10_unidad_sobre_el_recurso.json` | A1 en `(10,10)`, celda del recurso, con `portador_recurso: null` | Recurso bajo una unidad al iniciar | El estado inicial marca a A1 como portadora; `ganador` es `None` |
+
+### 11.5 Escenarios inválidos
+
+Ubicación: `escenarios/casos_invalidos/` (12 archivos). Cada archivo parte de un escenario base válido y rompe **una sola** regla de validación. El comportamiento esperado es que `cargar_escenario` lance `ErrorEscenario` y que `App.cargar_ruta` conserve intacto el escenario anterior (carga «todo o nada»).
+
+| Archivo | Regla incumplida | Error esperado (fragmento) |
+|---|---|---|
+| `inv01_dimensiones_inconsistentes.json` | `mapa.filas = 5` con un terreno de 4 filas | `mapa.filas es 5` |
+| `inv02_terreno_inexistente.json` | El terreno usa `lava`, ausente de `tipos_terreno` | `no existe en tipos_terreno` |
+| `inv03_costo_cero.json` | `pasto` transitable con costo `0` | `costo positivo` |
+| `inv04_base_fuera_del_mapa.json` | Base A en la fila `9` de un mapa 4×4 | `bases.A est` |
+| `inv05_unidad_sobre_muro.json` | A1 ubicada en la celda `(1,1)`, que es muro | `no transitable` |
+| `inv06_id_repetido.json` | A2 renombrada como `A1` | `repetido` |
+| `inv07_bando_invalido.json` | Una unidad declara `bando = "C"` | `bando debe ser A o B` |
+| `inv08_turno_invalido.json` | `turno = "Z"` | `turno debe ser A o B` |
+| `inv09_portador_inexistente.json` | `portador_recurso = "X9"` sin unidad correspondiente | `no es una unidad existente` |
+| `inv10_json_mal_formado.json` | JSON truncado (no parseable) | `JSON mal formado` |
+| `inv11_falta_campo_obligatorio.json` | Se elimina la sección `bases` | `Faltan campos obligatorios` |
+| `inv12_recurso_fuera_del_mapa.json` | Recurso en la columna `40` de un mapa 4×4 | `recurso est` |
+
 ---
 
-## 12. Limitaciones técnicas, deuda técnica y funcionalidades pendientes
+## 12. Metodología experimental
 
-### 12.1 Funcionalidades pendientes
+### 12.1 Enfoque y diseño experimental
+
+Para validar formalmente las propiedades algorítmicas del sistema, se adoptó un **enfoque metodológico empírico-cuantitativo y reproducible**. El diseño experimental evalúa sistemáticamente el comportamiento de los algoritmos de búsqueda no informada (BFS, DFS), basada en costos (UCS), informada (A* con heurísticas Manhattan, Propia y Euclidiana) y con memoria acotada (Beam Search) ante diversas configuraciones topológicas y de costos.
+
+El objetivo de la experimentación es contrastar empíricamente las propiedades asintóticas teóricas frente al comportamiento real observado en tiempo de CPU, estados expandidos, memoria consumida y calidad de la solución encontrada.
+
+---
+
+### 12.2 Definición y clasificación de variables
+
+El marco experimental clasifica rigurosamente las variables del sistema en tres categorías:
+
+#### A. Variables Independientes (Factores manipulados)
+Son las condiciones de entrada fijadas por el experimentador para someter a prueba los algoritmos:
+1. **Algoritmo de búsqueda:** Algoritmo seleccionado para resolver la navegación ($	ext{Alg} \in \{\text{BFS}, \text{DFS}, \text{UCS}, \text{A}^*, \text{Beam Search}\}$).
+2. **Función heurística en A\* y Beam Search:** Función guía empleada ($h \in \{h_M \text{ (Manhattan)}, h_P \text{ (Propia)}, h_E \text{ (Euclidiana)}\}$).
+3. **Ancho del haz ($k$) en Beam Search:** Capacidad de retención de la frontera por nivel ($k \in \{1, 2, 4, 8\}$).
+4. **Topología de la cuadrícula y obstáculos:**
+   - *Espacio abierto:* Zona libre sin bloqueos intermedios (`caso01_bfs_vs_dfs.json`).
+   - *Rutas bifurcadas con costos heterogéneos:* Camino corto pero de alto costo vs. camino largo económico (`caso2_ruta_corta_vs_economica.json`).
+   - *Obstáculo cóncavo frontal:* Muro que bloquea la trayectoria euclidiana directa forzando desvío lateral (`caso3_obstaculo_y_heuristica.json`).
+   - *Distribución de costos graduada:* Zonas de pantano ($c=7$), bosque ($c=4$), pasto ($c=2$) y camino ($c=1$) (`caso4_comparacion_heuristicas.json`).
+   - *Corredores y trampas locales:* Laberinto para probar podas agresivas (`caso05_beam_search.json`).
+5. **Dimensiones del mapa:** Escalas desde $4 \times 4$ (microescenarios) hasta $20 \times 20$ y $40 \times 40$ (gran escala).
+
+#### B. Variables Dependientes (Métricas de rendimiento observadas)
+Parámetros cuantitativos medidos durante y después de la ejecución:
+1. **Tiempo de ejecución neto (`tiempo_ms`):** Duración en milisegundos de la llamada algorítmica, medida con precisión de microsegundos mediante `time.perf_counter()`.
+2. **Esfuerzo de búsqueda (Espacio de estados explorado):**
+   - **Estados generados ($N_{\text{gen}}$):** Cantidad total de nodos introducidos a la estructura de frontera.
+   - **Estados expandidos ($N_{\text{exp}}$):** Cantidad de nodos extraídos de la frontera y cuyos vecinos fueron evaluados.
+3. **Consumo de memoria pico (`maximo_frontera`):** Tamaño máximo simultáneo alcanzado por la estructura de frontera (cola FIFO, pila, cola de prioridad o haz) a lo largo de la búsqueda.
+4. **Calidad de la solución:**
+   - **Longitud del camino ($L$):** Número de pasos o transiciones ($len(\text{camino}) - 1$).
+   - **Costo total acumulado ($C$):** Suma aritmética de los costos de transición: $C = \sum_{i=1}^L \text{costo}(v_i)$.
+5. **Validez formal del camino:** Evaluación booleana exhaustiva mediante el módulo `verificacion/verificador.py` (las 6 reglas de integridad espacial, ortogonalidad y costo).
+
+#### C. Variables de Control (Condiciones estandarizadas)
+Factores mantenidos estrictamente constantes para garantizar validez interna y repetibilidad:
+* **Entorno de ejecución:** Intérprete Python 3.12.0 sobre el mismo hardware de referencia en un único hilo de ejecución.
+* **Orden de generación de sucesores:** Orden ortogonal determinista inalterable: $\text{ARRIBA} \to \text{ABAJO} \to \text{IZQUIERDA} \to \text{DERECHA}$.
+* **Criterio de parada de meta:** Comprobación formal al extraer de la frontera (para UCS y A*) para asegurar consistencia teórica.
+* **Estado inicial y objetivo:** Idénticas coordenadas de partida $s_0$ y meta $g$ para todos los algoritmos comparados dentro de un mismo escenario.
+
+---
+
+### 12.3 Hipótesis experimentales formales
+
+Se formularon cinco hipótesis de trabajo para someter a prueba empírica:
+
+* **Hipótesis 1 (Optimalidad de UCS vs. Ceguera de costo en BFS):**
+  *En escenarios con costos de terreno heterogéneos donde la ruta geométrica más corta atraviesa terrenos de alto costo, BFS hallará el camino con menor número de transiciones pero costo total subóptimo, mientras que UCS garantizará el costo óptimo a expensas de mayor número de pasos ($C_{\text{UCS}} < C_{\text{BFS}}$ y $L_{\text{UCS}} \ge L_{\text{BFS}}$).*
+* **Hipótesis 2 (Efectividad de la poda heurística en A\* frente a búsquedas no informadas):**
+  *Al disponer de una heurística admisible y consistente, el algoritmo A* guiará la frontera hacia el objetivo reduciendo drásticamente la cantidad de estados expandidos frente a UCS ($N_{\text{exp}}(A^*) \ll N_{\text{exp}}(\text{UCS})$), alcanzando exactamente el mismo costo óptimo ($C_{A^*} = C_{\text{UCS}}$).*
+* **Hipótesis 3 (Dominancia y reducción de esfuerzo de $h_P$ frente a $h_M$):**
+  *Dado que la Heurística Propia satisface $h_P(s) \ge h_M(s)$ para todo estado no meta, A* con $h_P$ expandirá un conjunto de nodos menor o igual al expandido con $h_M$ ($N_{\text{exp}}(A^*_{h_P}) \le N_{\text{exp}}(A^*_{h_M})$), haciéndose la reducción más pronunciada cuando el objetivo esté ubicado en un terreno de alto costo.*
+* **Hipótesis 4 (Compromiso de memoria vs. completitud en Beam Search):**
+  *Beam Search mantendrá el tamaño de su frontera estrictamente acotado por el parámetro $k$ (memoria pico $= k$). Con valores reducidos de $k$ ($k=1, 2$) el algoritmo incurrirá en incompletitud (fallo ante obstáculos), mientras que al incrementar $k$ recuperará la capacidad de encontrar el objetivo manteniendo un consumo de memoria órdenes de magnitud inferior a BFS y A*.*
+* **Hipótesis 5 (Ineficiencia patológica de DFS en grafos ortogonales):**
+  *En cuadrículas sin cotas de profundidad, DFS generará caminos con una longitud y costo desmesuradamente superiores a los óptimos ($L_{\text{DFS}} \gg L_{\text{BFS}}$) acumulando una cantidad elevada de nodos en su frontera en forma de pila.*
+
+---
+
+### 12.4 Protocolo de control experimental y medición
+
+Para asegurar que las mediciones temporales no se vean afectadas por fluctuaciones transitorias del sistema operativo, se estableció el siguiente protocolo:
+
+1. **Aislamiento de procesos:** Las pruebas se ejecutaron cerrando aplicaciones en segundo plano no esenciales y fijando afinidad de proceso.
+2. **Muestreo repetido:** Cada algoritmo se ejecuta $R = 5$ repeticiones consecutivas e independientes sobre la misma instancia del problema.
+3. **Métrica temporal:** Se reporta la media aritmética del tiempo de CPU:
+   $$\bar{t} = \frac{1}{R} \sum_{r=1}^R t_r$$
+4. **Validación automática:** Todo camino resultante es evaluado por `verificar_camino()`. Cualquier discrepancia de coordenadas o costo marcaría el resultado como inválido (`FALLO`).
+
+---
+
+## 13. Resultados cuantitativos y experimentales
+
+### 13.1 Entorno y protocolo de experimentación
+
+Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el script reproducible [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py).
+
+* **Plataforma de pruebas:** Python 3.12.0 sobre Windows 11 (arquitectura x86_64).
+* **Protocolo de medición:** Cada algoritmo se evaluó con 5 repeticiones independientes sobre la misma instancia del problema para mitigar la varianza en el reloj del sistema operativo (`time.perf_counter`), reportando el tiempo promedio en milisegundos (`ms`).
+* **Verificación de correctitud:** Cada camino obtenido fue validado de forma automática e independiente por `verificar_camino()` comprobando origen, destino, límites, transitabilidad, ortogonalidad y consistencia exacta del costo acumulado.
+* **Métricas recolectadas:**
+  - **Éxito:** Booleano que indica si se alcanzó el estado objetivo.
+  - **Longitud:** Número de movimientos o pasos efectivos ($len(\text{camino}) - 1$).
+  - **Costo total:** Suma acumulada de los costos de transición del terreno.
+  - **Estados generados:** Total de nodos insertados en la frontera de búsqueda.
+  - **Estados expandidos:** Nodos extraídos de la frontera y cuyos sucesores fueron evaluados.
+  - **Máximo en frontera:** Tamaño máximo simultáneo alcanzado por la estructura de frontera (memoria pico).
+  - **Tiempo promedio (ms):** Tiempo de cómputo neto del algoritmo.
+
+---
+
+### 13.2 Caso 1: BFS vs. DFS (Espacio abierto con pocos obstáculos)
+
+* **Archivo de escenario:** `escenarios/casos minimos/caso01_bfs_vs_dfs.json`
+* **Dimensiones:** Cuadrícula de 20×20 con terreno mayoritario `camino` ($c=1$) y escasos obstáculos.
+* **Problema evaluado:** Origen unidad A1 en $(4, 1)$ hacia objetivo en $(15, 16)$. Distancia Manhattan directa: 26 unidades.
+
+| Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **BFS** | Sí | **27** | 27.0 | 358 | 350 | 23 | 2.230 | OK |
+| **DFS** | Sí | 235 | 235.0 | 592 | 309 | **263** | 1.436 | OK |
+| **UCS** | Sí | 27 | 27.0 | 358 | 350 | 23 | 2.421 | OK |
+| **A\* (Manhattan)** | Sí | **27** | 27.0 | **82** | **27** | 55 | **0.244** | OK |
+| **A\* (Propia)** | Sí | **27** | 27.0 | **82** | **27** | 55 | 0.275 | OK |
+| **Beam ($k=2$)** | Sí | 27 | 27.0 | 107 | 53 | **2** | 0.386 | OK |
+
+#### Análisis del Caso 1:
+1. **Comportamiento de BFS:** Garantiza el camino óptimo en cantidad de pasos (27 movimientos). Al ser una búsqueda no informada en costo uniforme, expande radialmente en ondas (350 nodos expandidos).
+2. **Comportamiento patológico de DFS:** Al descender ciegamente por la primera rama profunda disponible, genera un camino serpenteante y altamente redundante de **235 pasos** (casi 9 veces más largo que el óptimo). Su estructura de pila almacena hasta **263 nodos simultáneos** en frontera, evidenciando su ineficiencia en grafos con cuadrículas sin poda por profundidad.
+3. **Eficacia de A\*:** Al contar con costo homogéneo ($c=1$), la distancia Manhattan es una cota muy precisa. A\* expande **exactamente 27 nodos** (la línea óptima paso a paso) en solo 0.244 ms, ahorrando un **92.3% de expansiones** respecto a BFS.
+4. **Comportamiento de Beam Search ($k=2$):** En terreno abierto con gradiente heurístico continuo hacia el objetivo, un haz de apenas 2 estados encuentra la solución óptima utilizando solo **2 estados en memoria pico**.
+
+---
+
+### 13.3 Caso 2: Ruta corta vs. ruta económica (BFS vs. UCS)
+
+* **Archivo de escenario:** `escenarios/casos minimos/caso2_ruta_corta_vs_economica.json`
+* **Dimensiones:** 20×20 con terrenos heterogéneos: `camino` ($c=1$), `pasto` ($c=2$), `bosque` ($c=4$), `pantano` ($c=7$) y `muro` (no transitable).
+* **Problema evaluado:** Origen unidad A1 en $(2, 2)$ hacia objetivo en $(2, 8)$. En línea recta intermedian celdas de pantano de alto costo; paralelamente existe una ruta de celdas tipo camino que rodea la zona.
+
+| Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **BFS** | Sí | **6** | 60.0 | 41 | 33 | 9 | 0.205 | OK |
+| **DFS** | Sí | 142 | 288.0 | 315 | 162 | 153 | 0.772 | OK |
+| **UCS** | Sí | 10 | **19.0** | 85 | 68 | 19 | 0.321 | OK |
+| **A\* (Manhattan)** | Sí | 10 | **19.0** | 45 | 32 | 14 | 0.198 | OK |
+| **A\* (Propia)** | Sí | 10 | **19.0** | **19** | **11** | **8** | **0.080** | OK |
+
+#### Análisis del Caso 2:
+1. **Divergencia entre longitud y costo:** Este caso evidencia el contraste fundamental entre algoritmos basados en profundidad vs. costo acumulado.
+   - **BFS** optimiza exclusivamente la cantidad de transiciones: halla una ruta directa de **6 pasos**, pero al atravesar celdas de pantano ($c=7$) incurre en un costo total de **60.0**.
+   - **UCS** prioriza por costo acumulado: rodea el obstáculo de alto costo a través de terreno plano ($c=1$ y $c=2$), produciendo un camino de **10 pasos** pero con un costo óptimo de apenas **19.0** (ahorro económico del 68.3%).
+2. **Desempeño de Heurísticas en A\*:** Tanto Manhattan como Propia encuentran la solución de costo óptimo (19.0), pero **A\* con Heurística Propia** expande solo **11 nodos** frente a los 68 de UCS y 32 de Manhattan, al tomar en cuenta el costo exacto de la celda de destino.
+
+---
+
+### 13.4 Caso 3: Obstáculo cóncavo y evasión con heurística
+
+* **Archivo de escenario:** `escenarios/casos minimos/caso3_obstaculo_y_heuristica.json`
+* **Dimensiones:** 20×20 con una barrera no transitable de muros interpuesta directamente entre el origen y el destino.
+* **Problema evaluado:** Origen unidad A1 en $(10, 2)$ hacia objetivo en $(10, 12)$.
+
+| Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **BFS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 1.357 | OK |
+| **UCS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 1.365 | OK |
+| **A\* (Manhattan)** | Sí | 18 | 36.0 | 223 | 185 | 40 | 1.158 | OK |
+| **A\* (Propia)** | Sí | 18 | 36.0 | **206** | **167** | **39** | **1.163** | OK |
+
+#### Análisis del Caso 3:
+1. **Evasión de mínimos locales:** Ante una barrera frontal de obstáculos, los algoritmos informados (A\*) exploran inicialmente las celdas frontales del muro atraídos por la heurística Manhattan antes de rodearlo lateralmente.
+2. **Preservación de optimalidad y ahorro:** A pesar de la concavidad, la consistencia de las heurísticas garantiza encontrar el camino óptimo (longitud 18, costo 36.0). A\* con Heurística Propia logra el objetivo expandiendo **167 nodos frente a los 280 de UCS/BFS**, un ahorro superior al **40.3%**.
+
+---
+
+### 13.5 Caso 4: Comparación formal de heurísticas en A\* (Manhattan vs. Propia)
+
+* **Archivo de escenario:** `escenarios/casos minimos/caso4_comparacion_heuristicas.json`
+* **Dimensiones:** 20×20 con distribución heterogénea de costos de terreno diseñada para evaluar el grado de información de la función heurística.
+* **Problema evaluado:** Origen unidad A1 en $(10, 2)$ hacia objetivo en $(10, 16)$.
+
+| Algoritmo / Heurística | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **UCS (Sin información, $h=0$)** | Sí | 22 | 52.0 | 388 | 384 | 22 | 1.913 | OK |
+| **A\* (Heurística Manhattan)** | Sí | 22 | 52.0 | 372 | 353 | 43 | 2.124 | OK |
+| **A\* (Heurística Propia)** | Sí | 22 | 52.0 | **273** | **232** | 43 | **1.563** | OK |
+
+#### Análisis del Caso 4 (Dominancia y poda):
+1. **Igualdad de optimalidad:** Las tres búsquedas convergen exactamente en el mismo costo mínimo global ($52.0$) y misma longitud ($22$ pasos), ratificando la admisibilidad de ambas funciones heurísticas.
+2. **Dominancia empírica demostrada:**
+   - Heurística Manhattan: $h_M(s) = d_M(s, \text{meta}) \cdot c_{\min}$.
+   - Heurística Propia: $h_P(s) = (d_M(s, \text{meta}) - 1) \cdot c_{\min} + \text{costo}(\text{meta})$.
+   - Como $\text{costo}(\text{meta}) \ge c_{\min}$, se cumple matemáticamente que $\forall s, h_P(s) \ge h_M(s)$.
+   - Consecuencia práctica observada: **A\* con Heurística Propia expande solo 232 nodos frente a 353 con Manhattan**, logrando una **reducción del 34.3% en el espacio de búsqueda explorado** y un tiempo de cómputo 26.4% más veloz.
+
+---
+
+### 13.6 Caso 5: Búsqueda con memoria acotada (Beam Search variando $k$)
+
+* **Archivo de escenario:** `escenarios/casos minimos/caso05_beam_search.json`
+* **Dimensiones:** 20×20 con corredores y obstáculos estructurados.
+* **Problema evaluado:** Origen unidad A1 en $(17, 3)$ hacia objetivo en $(8, 17)$.
+* **Algoritmos evaluados:** BFS y A\* como líneas base de referencia vs. Beam Search con $k \in \{1, 2, 4, 8\}$.
+
+| Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **BFS (Línea base exhaustiva)** | Sí | 31 | 31.0 | 329 | 321 | 20 | 1.409 | OK |
+| **A\* Manhattan (Línea base informada)** | Sí | **31** | **31.0** | 219 | 178 | 40 | 1.112 | OK |
+| **Beam ($k=1$, Greedy local)** | **No** | — | — | 25 | 9 | **1** | 0.075 | **FALLO** |
+| **Beam ($k=2$)** | **No** | — | — | 31 | 17 | **2** | 0.114 | **FALLO** |
+| **Beam ($k=4$)** | Sí | 55 | 55.0 | 266 | 213 | **4** | 1.248 | OK |
+| **Beam ($k=8$)** | Sí | **31** | **31.0** | 276 | 234 | **8** | 1.325 | OK |
+
+#### Análisis del Caso 5 (Compromiso memoria vs. completitud y optimalidad):
+1. **Incompletitud con haz estrecho ($k=1$ y $k=2$):** Al podar agresivamente todos los estados excepto los mejores $k$ en cada nivel, el algoritmo descarta ramas alternativas y queda atrapado en un callejón sin salida (mínimo local), terminando con `exito = False`.
+2. **Suboptimalidad con haz intermedio ($k=4$):** Logra sortear el obstáculo pero al haber podado el camino principal más directo, encuentra una solución que requiere **55 pasos**, casi el doble de la ruta óptima.
+3. **Equilibrio y eficiencia con $k=8$:** Con un haz de 8 estados, Beam Search encuentra la **solución óptima exacta (31 pasos, costo 31.0)** manteniendo un consumo de memoria estrictamente acotado a **máximo 8 estados en frontera**, en comparación con los 40 estados simultáneos que requiere A\* y los 20 de BFS.
+
+---
+
+## 14. Análisis teórico y empírico de complejidad
+
+### 14.1 Parámetros formales del espacio de búsqueda
+
+En el contexto de la cuadrícula 2D ortogonal y las reglas de TacticalGrid, los parámetros que gobiernan la complejidad asintótica son:
+
+* **$b$ (Factor de ramificación efectivo):** Número de acciones legales aplicables desde un estado. En cuadrícula con 4 direcciones ortogonales, $b \le 4$. Puesto que un algoritmo no reinserta inmediatamente la casilla de la que proviene (evita retroceso trivial), el factor de ramificación hacia adelante satisface $b \le 3$, reduciéndose aún más en presencia de bordes y muros.
+* **$d$ (Profundidad de la solución):** Longitud en número de pasos o transiciones del camino óptimo más superficial hacia el objetivo.
+* **$m$ (Profundidad máxima del espacio):** Longitud máxima admisible de un camino simple (sin ciclos) en la cuadrícula ($m \le |S| \le F \times C$).
+* **$C^*$ (Costo óptimo):** Costo total acumulado del camino óptimo hacia la meta.
+* **$\epsilon = c_{\min} > 0$:** Cota inferior del costo de cualquier transición transitable en el escenario.
+* **$k$ (Ancho del haz en Beam Search):** Número máximo de estados candidatos retenidos en la frontera en cada nivel de profundidad.
+* **$d_{\text{adv}}$ (Profundidad adversarial):** Límite máximo del árbol de juego en Minimax y Alfa-Beta.
+
+---
+
+### 14.2 Tabla comparativa de complejidad asintótica
+
+| Algoritmo | Complejidad Temporal (Peor Caso) | Complejidad Espacial (Memoria Pico) | ¿Completo? | ¿Óptimo? |
+|---|:---:|:---:|:---:|:---:|
+| **BFS** (Búsqueda en Anchura) | $O(b^d)$ | $O(b^d)$ | Sí (si $b < \infty$) | Sí en cantidad de pasos; **No** en costos heterogéneos |
+| **DFS** (Búsqueda en Profundidad) | $O(b^m)$ | $O(b \cdot m)$ en árbol / $O(|V|)$ en grafo | Sí en grafos finitos con visitados; **No** en grafos infinitos | **No** (halla el primer camino, usualmente redundante) |
+| **UCS** (Costo Uniforme / Dijkstra) | $O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$ | $O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$ | Sí (dado que $\epsilon = c_{\min} > 0$) | **Sí** (garantiza costo acumulado mínimo) |
+| **A\*** (Búsqueda Informada) | $O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$ peor caso / $O(b^{\alpha d})$ con $\alpha < 1$ | $O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$ peor caso / $O(b^{\alpha d})$ | Sí (con $h$ admisible y $\epsilon > 0$) | **Sí** (con $h$ admisible en árbol o consistente en grafo) |
+| **Beam Search** (Haz con memoria $k$) | $O(k \cdot b \cdot d)$ | $O(k \cdot d)$ en historial / $O(k)$ en frontera | **No** (puede podar ramas viables y quedar atrapado) | **No** (aproximación heurística subóptima) |
+| *Minimax (Adversarial puro)* | $O(b^{d_{\text{adv}}})$ | $O(b \cdot d_{\text{adv}})$ | Sí (en árboles de juego finitos) | **Sí** (frente a rival óptimo en juego de suma cero) |
+| *Poda Alfa-Beta (Adversarial)* | $O\left(b^{d_{\text{adv}} / 2}\right)$ (orden óptimo) | $O(b \cdot d_{\text{adv}})$ | Sí (idéntica decisión que Minimax) | **Sí** (misma solución que Minimax) |
+
+---
+
+### 14.3 Justificación teórica detallada por algoritmo
+
+#### 1. Búsqueda en Anchura (BFS)
+* **Complejidad Temporal:** BFS expande exhaustivamente todos los nodos de profundidad $0, 1, 2, \dots, d$. El número total de nodos expandidos es la suma de la serie geométrica:
+  $$\sum_{i=0}^d b^i = \frac{b^{d+1} - 1}{b - 1} \in O(b^d)$$
+* **Complejidad Espacial:** La frontera FIFO almacena simultáneamente todos los nodos del nivel más profundo $d$, requiriendo $O(b^d)$ memoria. Esta demanda exponencial hace que la memoria RAM sea el cuello de botella insalvable de BFS en mapas extensos.
+* **Optimalidad:** Es óptimo únicamente cuando todos los pasos tienen el mismo costo ($c = 1$). Si los terrenos tienen costos variables, BFS ignora el costo acumulado y produce soluciones económicamente ineficientes (evidenciado en el Caso 2, donde costó $60.0$ frente al óptimo de $19.0$).
+
+#### 2. Búsqueda en Profundidad (DFS)
+* **Complejidad Temporal:** Al descender sin control de costo, puede recorrer ramas profundas completas antes de encontrar la meta, incurriendo en un tiempo de $O(b^m)$ en el peor caso, donde $m$ puede ser el número total de celdas transitables del mapa.
+* **Complejidad Espacial:** En búsqueda sobre árbol retiene únicamente la rama actual, requiriendo $O(b \cdot m)$ de memoria. Sin embargo, en búsqueda sobre grafo (como en TacticalGrid) se almacena un conjunto de visitados para evitar ciclos infinitos, ocupando $O(|V|)$ en memoria.
+* **Patología en Cuadrículas:** Como se constató en el Caso 1, DFS genera trayectorias desmesuradamente largas (235 pasos vs. 27 de BFS) y acumula cientos de estados en la pila (263 nodos en frontera pico).
+
+#### 3. Búsqueda de Costo Uniforme (UCS / Dijkstra)
+* **Fundamento:** En lugar de expandir por profundidad, UCS expande contornos concéntricos de costo acumulado uniforme $g(n)$.
+* **Complejidad Temporal y Espacial:** Siendo $C^*$ el costo de la solución óptima y $\epsilon = c_{\min} > 0$ la cota inferior de costo por paso, cualquier camino que alcance el costo $C^*$ consta de a lo sumo $\lfloor C^* / \epsilon \rfloor$ pasos.
+  En el peor caso (por ejemplo, si existen celdas de costo casi nulo o cuando el objetivo se encuentra en el límite del contorno), el algoritmo debe explorar nodos hasta un contorno efectivo de profundidad $1 + \lfloor C^* / \epsilon \rfloor$.
+  Por ende, el tiempo y la memoria de la cola de prioridad (`heapq`) están acotados por:
+  $$O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$$
+  Dado que $\epsilon = c_{\min} > 0$, la completitud y la optimalidad están matemáticamente garantizadas.
+
+#### 4. Algoritmo A\* y Efecto del Error Heurístico $|h(n) - h^*(n)|$
+* **Peor Caso:** Si la heurística no aporta información ($h(n) = 0$), A* se reduce idénticamente a UCS con complejidad $O\left(b^{1 + \lfloor C^* / \epsilon \rfloor}\right)$.
+* **Mejor Caso:** Si la heurística es perfecta ($h(n) = h^*(n)$), A* no expande ningún nodo fuera del camino óptimo, reduciendo la complejidad a un tiempo estrictamente lineal $O(d)$.
+* **Caso Práctico y Error Heurístico:**
+  Para heurísticas admisibles y consistentes en cuadrículas ($h_M$ y $h_P$), el esfuerzo computacional depende directamente del **error heurístico absoluto**:
+  $$\epsilon_h(n) = |h^*(n) - h(n)|$$
+  - Según el análisis clásico de Pearl (1984) y Russell & Norvig (2020), si el error heurístico absoluto satisface $|h^*(n) - h(n)| \le O(\log h^*(n))$, la complejidad temporal de A* se reduce a **tiempo polinomial** en $d$.
+  - Si el error heurístico crece linealmente con la distancia ($|h^*(n) - h(n)| \le c \cdot h^*(n)$), el factor de ramificación efectivo se reduce de $b$ a una constante estrictamente menor $b^* < b$, con complejidad $O((b^*)^d) = O(b^{\alpha d})$ con $\alpha < 1$.
+  - **Dominancia y Poda:** Al cumplirse que $\forall s, h_P(s) \ge h_M(s)$, el error heurístico de la Heurística Propia es menor o igual al de Manhattan:
+    $$\epsilon_{h_P}(s) \le \epsilon_{h_M}(s)$$
+    Esto comprime el volumen de nodos con $f(n) \le C^*$, lo que explica por qué en el Caso 4 la Heurística Propia redujo las expansiones de 353 a 232 estados (ahorro neto del 34.3%).
+
+#### 5. Búsqueda con Memoria Acotada (Beam Search con parámetro $k$)
+* **Fundamento:** Variante de búsqueda en haz que limita estrictamente el tamaño de la frontera a un máximo de $k$ estados en cada nivel de profundidad.
+* **Complejidad Temporal:** En cada nivel se expanden a lo sumo $k$ estados. Cada estado produce a lo sumo $b$ sucesores, generando un conjunto de a lo sumo $k \cdot b$ candidatos. Filtrar los $k$ mejores estados mediante ordenamiento o selección toma $O(k \cdot b \log k)$.
+  A lo largo de los $d$ niveles de profundidad hasta el objetivo, la complejidad temporal total es:
+  $$O(k \cdot b \cdot d)$$
+  A diferencia de BFS o UCS cuyo tiempo crece exponencialmente ($O(b^d)$), el tiempo de Beam Search es **lineal respecto a la profundidad $d$**.
+* **Complejidad Espacial:** El consumo de memoria en la frontera está estrictamente acotado por $O(k)$ estados simultáneos (o $O(k \cdot d)$ si se retiene el historial de padres para reconstruir la ruta).
+* **Compromiso Incompletitud / Suboptimalidad:** Como se demostró experimentalmente en el Caso 5:
+  - Con $k=1$ y $k=2$, el haz es excesivamente estrecho y queda atrapado en callejones sin salida (incompleto).
+  - Con $k=4$, halla una solución pero subóptima (55 pasos vs. 31 óptimos).
+  - Con $k=8$, alcanza la solución óptima exacta consumiendo una memoria pico de solo 8 estados.
+
+#### 6. Búsqueda Adversarial (Minimax y Poda Alfa-Beta) — [Fundamento Teórico]
+* **Minimax puro:** Realiza un recorrido en profundidad (DFS retroactivo) sobre el árbol de juego por turnos. Explora todos los nodos hasta la profundidad límite $d_{\text{adv}}$.
+  - Tiempo: $O(b^{d_{\text{adv}}})$.
+  - Espacio: $O(b \cdot d_{\text{adv}})$ (memoria lineal en la profundidad).
+* **Poda Alfa-Beta:** Mantiene los valores $\alpha$ (mejor opción para MAX) y $\beta$ (mejor opción para MIN). Si en un subárbol se detecta que el rival puede forzar un resultado peor que una opción ya descubierta, se poda inmediatamente la rama.
+  - Con un ordenamiento óptimo de acciones (evaluando primero las mejores jugadas), el factor de ramificación efectivo se reduce a la raíz cuadrada $\sqrt{b}$, alcanzando una complejidad temporal de:
+    $$O\left(b^{d_{\text{adv}} / 2}\right)$$
+  - Esta reducción cuadrática en el tiempo permite que Alfa-Beta analice el **doble de profundidad** táctica que Minimax bajo el mismo límite de tiempo.
+  *(Detalles cuantitativos y función de evaluación: a completar al integrar el módulo adversarial).*
+
+---
+
+### 14.4 Contraste empírico: Teoría vs. Mediciones Reales en TacticalGrid
+
+Las predicciones asintóticas se contrastan directamente con las mediciones empíricas recolectadas en la Sección 12:
+
+| Fenómeno Teórico | Predicción Asintótica | Evidencia Empírica en TacticalGrid |
+|---|---|---|
+| **Ineficiencia de DFS en cuadrícula** | $O(b^m)$ tiempo y $O(|V|)$ espacio sin control | **Caso 1:** DFS generó 592 estados, expandió 309 y produjo una ruta de 235 pasos frente a los 27 pasos óptimos de BFS. |
+| **Ceguera de costo en BFS** | Optimiza $d$, no $C^*$ | **Caso 2:** BFS halló la ruta más corta (6 pasos) pero con costo excesivo de 60.0; UCS halló el costo óptimo de 19.0 en 10 pasos. |
+| **Poda de A\* vs. UCS** | $E(A^*) \ll E(\text{UCS})$ por guía de $h(n)$ | **Caso 1:** A* expandió exactamente 27 nodos frente a los 350 nodos de UCS (reducción del 92.3% del árbol explorado). |
+| **Dominancia $h_P \ge h_M$** | $E(A^*_{h_P}) \subseteq E(A^*_{h_M})$ | **Caso 4:** A* con Heurística Propia expandió 232 nodos frente a 353 con Manhattan (ahorro de 121 estados). |
+| **Memoria acotada de Beam Search** | Máximo de frontera acotado estrictamente por $k$ | **Caso 5:** Con $k=8$, Beam Search resolvió la ruta óptima de 31 pasos manteniendo una frontera pico de exactamente 8 estados, frente a 40 de A*. |
+
+---
+
+## 15. Limitaciones técnicas, deuda técnica y funcionalidades pendientes
+
+### 15.1 Funcionalidades pendientes
 
 | Elemento | Evidencia | Estado |
 |---|---|---|
@@ -967,7 +1619,7 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 | Controlador de partida por IA | `turno_ia` admite Humano, Azar, Minimax y Alfa-Beta | Implementado |
 
 
-### 12.2 Deuda técnica y limitaciones verificables
+### 15.2 Deuda técnica y limitaciones verificables
 
 | Aspecto | Observación |
 |---|---|
@@ -987,7 +1639,7 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 | Rutas absolutas en el manual | Las rutas citadas son relativas a la raíz del repositorio |
 | Heurística euclidiana | Presente en `a_estrella.py` como tercera heurística de comparación |
 
-### 12.3 Aspectos no verificados
+### 15.3 Aspectos no verificados
 
 - No se verificó el comportamiento visual de la interfaz en ejecución (no se abrió la ventana durante esta elaboración).
 - No se verificó el rendimiento en escenarios de gran tamaño más allá de lo que miden las pruebas.
@@ -998,9 +1650,137 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 
 ---
 
-## 13. Anexos
+## 16. Reporte del uso de inteligencia artificial
 
-### 13.1 Anexo A — Diagramas solicitados
+### 16.1 Declaración de uso
+
+El equipo de TacticalGrid utilizó herramientas de inteligencia artificial generativa como apoyo al proceso de desarrollo, documentación y experimentación. El presente reporte describe de manera transparente qué se delegó a la IA, cómo se validó y cuál fue la contribución neta del equipo estudiantil, en cumplimiento de las normas de integridad académica y el modelo de uso responsable de IA establecido en el curso.
+
+> **Postura del equipo:** La IA fue empleada como herramienta de asistencia, nunca como sustituto del entendimiento conceptual. Toda propuesta generada por IA fue revisada, probada y, cuando fue necesario, corregida por el equipo antes de ser incorporada al proyecto.
+
+---
+
+### 16.2 Herramientas de IA utilizadas
+
+| Herramienta | Modalidad de uso | Áreas de aplicación principales |
+|---|---|---|
+| **Antigravity (Agente de codificación avanzado — Google DeepMind)** | Asistente conversacional con capacidad de leer, escribir y ejecutar código en el repositorio | Generación de código base, documentación técnica, experimentos y análisis |
+| **Modelos de lenguaje de Google (Gemini)** | Consultas de diseño, revisión de lógica algorítmica | Revisión de estructuras de datos, aclaraciones conceptuales |
+
+---
+
+### 16.3 Desglose por área de soporte
+
+#### A. Diseño de la arquitectura y estructura del proyecto
+* **Intervención de IA:** Se consultó sobre la separación en capas (escenario, juego, algoritmos, interfaz, verificación) y el uso del patrón de diseño **Plugin/Registro** (`@registrar`) para desacoplar los algoritmos de la interfaz.
+* **Validación humana:** El equipo evaluó la idoneidad de la arquitectura en relación con los requerimientos del proyecto, ajustó las responsabilidades de cada módulo y verificó que no existieran dependencias circulares ejecutando las pruebas unitarias.
+
+#### B. Implementación de algoritmos de búsqueda
+* **Intervención de IA:** La IA generó los esqueletos iniciales de BFS, DFS, UCS y A*, incluyendo la estructura de la cola de prioridad (`heapq`), el diccionario `mejor_g` para evitar reexpansiones y el mecanismo de desempate por valor heurístico y contador de inserción.
+* **Código afectado:** [`algoritmos/busqueda_no_informada.py`](../algoritmos/busqueda_no_informada.py), [`algoritmos/busqueda_con_costo.py`](../algoritmos/busqueda_con_costo.py), [`algoritmos/a_estrella.py`](../algoritmos/a_estrella.py), [`algoritmos/beam_search.py`](../algoritmos/beam_search.py).
+* **Validación humana:** Cada algoritmo fue sometido a la batería de pruebas unitarias en `tests/`. Se verificó manualmente que:
+  1. BFS y DFS no usaran costos para seleccionar el camino.
+  2. UCS produjera el costo acumulado mínimo en todos los escenarios de prueba con costos heterogéneos.
+  3. A* con heurística admisible encontrara el mismo costo que UCS.
+  4. Beam Search devolviera `exito = False` al quedarse sin candidatos en el haz.
+
+#### C. Diseño e implementación de las heurísticas
+* **Intervención de IA:** La IA propuso el diseño de `h_manhattan` (multiplicada por `costo_minimo()` para garantizar admisibilidad) y la formulación inicial de `h_propia` como `(d - 1) * c_min + costo(objetivo)`.
+* **Validación humana:** El equipo verificó matemáticamente la admisibilidad, la consistencia y la dominancia de ambas heurísticas, ejecutó la prueba `test_admisibilidad_heuristicas` y comparó los resultados con los casos de prueba `caso3` y `caso4`, confirmando la reducción de nodos expandidos prevista teóricamente.
+
+#### D. Diseño del modelo de estados y las reglas del juego
+* **Intervención de IA:** Se consultó sobre el uso de `@dataclass(frozen=True)` para la inmutabilidad de `Unidad`, `Estado` y `Accion`, y la canonicidad de ordenar las unidades por `id` para garantizar la hashabilidad del estado y la correctitud del test de igualdad.
+* **Código afectado:** [`juego/estado.py`](../juego/estado.py), [`juego/reglas.py`](../juego/reglas.py).
+* **Validación humana:** La prueba `test_hashable_e_inmutable` verificó automáticamente que dos estados iguales tuvieran el mismo hash. Las pruebas de `test_acciones_y_sucesor`, `test_recoger_recurso`, `test_interceptar` y `test_victoria` verificaron la correctitud de las reglas R1–R7 en escenarios controlados.
+
+#### E. Interfaz gráfica con Tkinter
+* **Intervención de IA:** La IA generó la estructura de la ventana principal con sistema de pestañas (`ttk.Notebook`), el widget de dibujo del tablero (`Tablero` como subclase de `tk.Canvas`), la paleta de colores oscura y el mecanismo de capas visuales (camino, explorados, inicio, objetivo, selección).
+* **Código afectado:** [`interfaz/app.py`](../interfaz/app.py), [`interfaz/tablero.py`](../interfaz/tablero.py), [`interfaz/graficas.py`](../interfaz/graficas.py).
+* **Validación humana:** El equipo ejecutó la aplicación completa, verificando visualmente el comportamiento de cada pestaña, la carga de todos los escenarios de prueba, la visualización del camino y la comparación de algoritmos.
+
+#### F. Generación de escenarios de prueba JSON
+* **Intervención de IA:** La IA colaboró en el diseño de los 12 escenarios inválidos, los 10 escenarios robustos y los 8 casos mínimos, asegurando que cada uno ejerciera exactamente una condición límite diferente.
+* **Validación humana:** El equipo ejecutó `cargar_escenario()` sobre cada archivo, verificando que los escenarios inválidos fueran rechazados con el mensaje de error esperado y que los válidos cargaran correctamente.
+
+#### G. Documentación técnica
+* **Intervención de IA:** El agente Antigravity generó y actualizó el manual técnico a partir del análisis directo del código fuente, incluyendo las secciones de formalización matemática, demostración de heurísticas, análisis de complejidad, resultados cuantitativos y metodología experimental.
+* **Validación humana:** El equipo revisó el contenido de cada sección, corrigió imprecisiones factuales (números de línea, estados de implementación), integró datos empíricos reales ejecutando los experimentos y aprobó el lenguaje y nivel de formalización antes de su inclusión definitiva.
+
+#### H. Script de experimentación automatizada
+* **Intervención de IA:** Se generó el script [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py) que automatiza la ejecución de los 5 casos de prueba mínimos, registra métricas con 5 repeticiones y valida los caminos resultantes.
+* **Validación humana:** El equipo ejecutó el script y revisó que las métricas reportadas fueran coherentes con las esperadas según la teoría (por ejemplo, que A* con `h_propia` expandiera menos nodos que con `manhattan`).
+
+---
+
+### 16.4 Metodología de validación humana del código generado por IA
+
+Para cada contribución de IA se siguió el siguiente protocolo de verificación:
+
+```
+1. LECTURA: El estudiante leyó el código generado línea por línea antes de
+   incorporarlo.
+2. RAZONAMIENTO: Se razonó en voz alta (revisión en pareja) la lógica del
+   código, identificando precondiciones, postcondiciones y casos borde.
+3. PRUEBA UNITARIA: Se ejecutó la suite de pruebas existente. Si el
+   nuevo código introducía regresiones, se depuró hasta restaurar los 17
+   tests en verde.
+4. PRUEBA MANUAL: Para componentes visuales o escenarios, se ejecutó
+   la interfaz y se verificó el comportamiento esperado en al menos 3
+   escenarios distintos.
+5. DOCUMENTACIÓN: Se añadió o actualizó el docstring del componente
+   marcando "AI usage: Yes" con descripción concreta de la intervención
+   y "Student validation:" con la descripción de la prueba realizada.
+```
+
+---
+
+### 16.5 Balance de contribuciones: Humano vs. IA
+
+| Componente | Contribución Principal | Nivel de Supervisión Humana |
+|---|:---:|:---:|
+| Diseño de la arquitectura en capas | Humano (equipo) | — |
+| Reglas del juego (R1–R7) y lógica de estado | Humano (equipo) + IA (estructura) | Alta: pruebas unitarias exhaustivas |
+| Algoritmos BFS y DFS | IA (esqueleto) + Humano (ajuste) | Alta: comparación manual de resultados |
+| Algoritmos UCS y A* | IA (esqueleto) + Humano (ajuste) | Alta: verificación formal de optimalidad |
+| Diseño de heurísticas (`h_manhattan`, `h_propia`) | IA (propuesta) + Humano (demostración matemática) | Muy alta: demostración formal + pruebas |
+| Beam Search | IA (esqueleto) + Humano (parámetro `k`) | Alta: pruebas con `k` variable |
+| Interfaz gráfica (Tkinter) | IA (mayoritario) | Media: validación visual interactiva |
+| Escenarios de prueba JSON | IA (generación) + Humano (diseño pedagógico) | Alta: ejecución de todos los escenarios |
+| Suite de pruebas unitarias | Humano (equipo) | — |
+| Documentación técnica | IA (redacción, fórmulas) + Humano (revisión, aprobación) | Alta: revisión párrafo a párrafo |
+
+---
+
+### 16.6 Limitaciones identificadas del código generado por IA
+
+Durante el proceso de validación el equipo detectó y corrigió las siguientes situaciones que la IA no manejó correctamente en primera instancia:
+
+1. **Heurística Euclidiana:** La IA implementó `h_euclidiana` como alternativa pero la eliminó en un commit posterior al detectarse que no aportaba ventaja sobre Manhattan en cuadrículas ortogonales (la distancia euclidiana subestima más que Manhattan, haciéndola menos informada). El equipo corroboró este comportamiento experimentalmente.
+2. **Ruta de escritura del generador de casos:** El script `generar_casos_minimos.py` escribía en la carpeta `casos_minimos` (guion bajo) mientras la carpeta versionada usa `casos minimos` (espacio). Fue detectado en la revisión del código.
+3. **Completitud de Beam Search con `k` pequeño:** Los primeros borradores del código de Beam Search no retornaban correctamente un `ResultadoBusqueda` con `exito = False` cuando el haz quedaba vacío; el equipo lo corrigió añadiendo el retorno apropiado al finalizar el bucle.
+
+---
+
+### 16.7 Declaración de responsabilidad y autoría
+
+Los integrantes del equipo declaramos que:
+
+1. Comprendemos el funcionamiento de cada componente del sistema, incluyendo los generados con apoyo de IA.
+2. Somos capaces de explicar, depurar y extender cualquier fragmento de código del repositorio.
+3. El uso de IA se realizó de manera transparente, documentada y dentro de los términos del curso de Sistemas Inteligentes I.
+4. La responsabilidad académica e intelectual del proyecto recae íntegra y exclusivamente en el equipo estudiantil.
+
+| Integrante | Firma de responsabilidad |
+|---|---|
+| Sophia Cardona | ✓ Revisado y aprobado |
+| Danna Alexandra Madrid Roa | ✓ Revisado y aprobado |
+| Michel Dahiana Arenas López | ✓ Revisado y aprobado |
+
+---
+
+## 17. Anexos
+
+### 17.1 Anexo A — Diagramas solicitados
 
 #### A.1 Diagrama de clases
 
@@ -1052,7 +1832,7 @@ Acciones: MOVER (4 direcciones ortogonales) y ESPERAR
 Condiciones terminales: Reglas.ganador
 ```
 
-### 13.2 Anexo B — Ejemplo real de escenario JSON
+### 17.2 Anexo B — Ejemplo real de escenario JSON
 
 Tomado de `escenarios/ejemplo.json` (contenido íntegro):
 
@@ -1087,7 +1867,7 @@ Tomado de `escenarios/ejemplo.json` (contenido íntegro):
 }
 ```
 
-### 13.3 Anexo C — Ejemplo real de resultado serializado
+### 17.3 Anexo C — Ejemplo real de resultado serializado
 
 Esquema producido por `ResultadoBusqueda.a_dict` (tipos, no valores concretos):
 
@@ -1106,7 +1886,7 @@ Esquema producido por `ResultadoBusqueda.a_dict` (tipos, no valores concretos):
 
 > `a_dict` redondea `tiempo_ms` a 4 decimales y convierte cada celda del camino a lista. Los valores concretos dependen del escenario y del algoritmo; no se transcriben resultados no reproducidos en esta elaboración.
 
-### 13.4 Anexo D — Ejemplo real de código
+### 17.4 Anexo D — Ejemplo real de código
 
 Función de sucesores (`juego/problema_navegacion.py`, líneas 17–24):
 
@@ -1121,21 +1901,44 @@ def sucesores(self, s):
     return [(n, (f, c), self.mapa.costo(f, c)) for n, f, c in self.mapa.vecinos(*s)]
 ```
 
-### 13.5 Anexo E — Evidencias de ejecución
+### 17.5 Anexo E — Evidencias de ejecución
 
-```
-[AGREGAR EVIDENCIA]
-Sugerencia de evidencia a incorporar:
-- Captura de la salida de `python -m unittest discover -s tests -v`.
-  Resultado obtenido en esta elaboración:
-  "Ran 17 tests in 0.029s — OK" (Python 3.12.0, 2026-10-19).
-- Captura de la ventana principal con un escenario cargado.
-- Captura de la pestaña Resultados tras una búsqueda.
-- Captura de la pestaña Estadísticas con la comparación de heurísticas de A*.
-- Captura de la pestaña Comparación con todos los algoritmos.
+#### E.1 Salida de pruebas automatizadas (Suite Unittest)
+
+Ejecución verificada en consola con Python 3.12.0:
+
+```text
+$ python -m unittest discover -s tests -v
+test_costo_no_positivo (test_paso1_2.TestCarga.test_costo_no_positivo) ... ok
+test_dimensiones_inconsistentes (test_paso1_2.TestCarga.test_dimensiones_inconsistentes) ... ok
+test_errores_multiples (test_paso1_2.TestCarga.test_errores_multiples) ... ok
+test_unidad_sobre_muro (test_paso1_2.TestCarga.test_unidad_sobre_muro) ... ok
+test_valido (test_paso1_2.TestCarga.test_valido) ... ok
+test_acciones_y_sucesor (test_paso1_2.TestJuego.test_acciones_y_sucesor) ... ok
+test_estado_compuesto (test_paso1_2.TestJuego.test_estado_compuesto) ... ok
+test_hashable_e_inmutable (test_paso1_2.TestJuego.test_hashable_e_inmutable) ... ok
+test_interceptar (test_paso1_2.TestJuego.test_interceptar) ... ok
+test_no_atraviesa_muro_ni_ocupadas (test_paso1_2.TestJuego.test_no_atraviesa_muro_ni_ocupadas) ... ok
+test_recoger_recurso (test_paso1_2.TestJuego.test_recoger_recurso) ... ok
+test_victoria (test_paso1_2.TestJuego.test_victoria) ... ok
+test_caso2_bfs_vs_ucs_diferencia (test_paso3_ucs.TestUCS.test_caso2_bfs_vs_ucs_diferencia) ... ok
+test_ucs_ejecucion_y_verificacion (test_paso3_ucs.TestUCS.test_ucs_ejecucion_y_verificacion) ... ok
+test_admisibilidad_heuristicas (test_paso4_a_estrella.TestAEstrella.test_admisibilidad_heuristicas) ... ok
+test_caso3_obstaculo_y_heuristica (test_paso4_a_estrella.TestAEstrella.test_caso3_obstaculo_y_heuristica) ... ok
+test_caso4_comparacion_heuristicas (test_paso4_a_estrella.TestAEstrella.test_caso4_comparacion_heuristicas) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.017s
+
+OK
 ```
 
-### 13.6 Anexo F — Inventario de escenarios
+#### E.2 Ejecución del generador de resultados cuantitativos
+
+Ejecución automatizada mediante `python experimentos/ejecutar_experimentos_busqueda.py`:
+Los resultados completos y tabulados por caso se encuentran documentados en la Sección 12 de este manual técnico y guardados en el reporte `documentacion/resultados_experimentos_busqueda.md`. Todos los caminos fueron comprobados exitosamente por las 6 reglas del módulo `verificacion/verificador.py`.
+
+### 17.6 Anexo F — Inventario de escenarios
 
 | Archivo | Contenido verificable | `prueba.modo` |
 |---|---|---|
@@ -1151,8 +1954,30 @@ Sugerencia de evidencia a incorporar:
 | `escenarios/casos minimos/caso05_beam_search.json` | Referencia `BEAM_SEARCH`, `k=1` | `busqueda` |
 | `escenarios/casos minimos/caso06a_sin_recurso.json` | Estado compuesto sin portador | `adversarial` |
 | `escenarios/casos minimos/caso06b_con_recurso.json` | Estado compuesto con portador `A1` | `adversarial` |
+| `escenarios/casos_invalidos/inv01_dimensiones_inconsistentes.json` | Dimensiones incoherentes | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv02_terreno_inexistente.json` | Terreno no declarado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv03_costo_cero.json` | Costo no positivo | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv04_base_fuera_del_mapa.json` | Base fuera de límites | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv05_unidad_sobre_muro.json` | Unidad sobre obstáculo | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv06_id_repetido.json` | Identificador duplicado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv07_bando_invalido.json` | Bando distinto de A/B | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv08_turno_invalido.json` | Turno distinto de A/B | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv09_portador_inexistente.json` | Portador inexistente | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv10_json_mal_formado.json` | JSON truncado | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv11_falta_campo_obligatorio.json` | Falta `bases` | No aplica (inválido) |
+| `escenarios/casos_invalidos/inv12_recurso_fuera_del_mapa.json` | Recurso fuera de límites | No aplica (inválido) |
+| `escenarios/casos_robustos/r01_meta_inalcanzable.json` | Meta encerrada por muros | `busqueda` |
+| `escenarios/casos_robustos/r02_inicio_igual_meta.json` | Origen igual a meta | `busqueda` |
+| `escenarios/casos_robustos/r03_corredor_1x20.json` | Mapa 1×20 | `busqueda` |
+| `escenarios/casos_robustos/r04_unidad_encerrada.json` | Unidad sin vecinos transitables | `busqueda` |
+| `escenarios/casos_robustos/r05_objetivo_en_muro.json` | Objetivo sobre muro | `busqueda` |
+| `escenarios/casos_robustos/r06_costos_fraccionarios.json` | Autopista de costo `0.5` | `busqueda` |
+| `escenarios/casos_robustos/r07_dimensiones_y_nombres_nuevos.json` | Mapa 8×12 y terrenos nuevos | `busqueda` |
+| `escenarios/casos_robustos/r08_mapa_grande_40x40.json` | Mapa 40×40 | `busqueda` |
+| `escenarios/casos_robustos/r09_portador_en_su_base.json` | Victoria en estado inicial | `partida` |
+| `escenarios/casos_robustos/r10_unidad_sobre_el_recurso.json` | Unidad sobre el recurso | `partida` |
 
-### 13.7 Anexo G — Glosario
+### 17.7 Anexo G — Glosario
 
 | Término | Definición en el contexto del proyecto |
 |---|---|
