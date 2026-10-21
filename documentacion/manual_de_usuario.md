@@ -9,7 +9,7 @@
 | **Proyecto** | **TacticalGrid** — Entorno Táctico 2D con Búsqueda y Toma de Decisiones |
 | **Asignatura** | Sistemas Inteligentes I |
 | **Programa** | Ingeniería de Sistemas y Computación — Universidad de Caldas |
-| **Versión del Manual** | 1.0 (Octubre 2026) |
+| **Versión del Manual** | 1.1 (Octubre 2026) — actualizado con Beam Search y la comparación Minimax vs Alfa-Beta |
 | **Integrantes del Equipo** | • Sophia Cardona<br>• Danna Alexandra Madrid Roa<br>• Michel Dahiana Arenas López |
 | **Tipo de Documento** | Manual de Usuario Final y Guía de Experimentación |
 
@@ -47,6 +47,7 @@
 - **Búsqueda no informada:** Búsqueda en Anchura (**BFS**) y Búsqueda en Profundidad (**DFS**).
 - **Búsqueda basada en costos:** Búsqueda de Costo Uniforme (**UCS** / Dijkstra), sensible a terrenos de distinto costo.
 - **Búsqueda informada:** Algoritmo **A\*** con múltiples funciones heurísticas (Distancia Manhattan, Heurística Propia informada por la meta y Distancia Euclidiana).
+- **Búsqueda con memoria acotada:** **Beam Search** (búsqueda en haz) con un ancho de haz configurable $k$, que limita la frontera a los $k$ mejores estados de cada nivel.
 - **Toma de decisiones adversarial:** Algoritmo **Minimax** y Minimax con **Poda Alfa-Beta**, orientados por una función de evaluación táctica para juegos de suma cero.
 
 El objetivo central del juego táctico consiste en dos bandos (**A** y **B**) que compiten sobre una cuadrícula con diversos terrenos y obstáculos. En el centro neutral yace un **Recurso Estratégico**; el bando que logre capturar el recurso y llevarlo hasta su respectiva base gana la partida.
@@ -57,7 +58,7 @@ El objetivo central del juego táctico consiste en dos bandos (**A** y **B**) qu
 
 ### 4.1 Requisitos de Software
 * **Sistema Operativo:** Windows 10/11, GNU/Linux o macOS.
-* **Intérprete:** Python 3.9 o superior (probado y certificado en Python 3.11 y 3.12).
+* **Intérprete:** Python 3.9 o superior (probado y certificado en Python 3.11, 3.12 y 3.14).
 * **Bibliotecas requeridas:** Únicamente la biblioteca estándar de Python y el soporte gráfico de `tkinter`.
 
 > [!NOTE]
@@ -79,9 +80,14 @@ El objetivo central del juego táctico consiste en dos bandos (**A** y **B**) qu
    ```
    *(o `python3 main.py` en sistemas Unix/Linux).*
 
-4. *(Opcional)* Para verificar la integridad de todos los módulos mediante la suite de pruebas unitarias:
+4. *(Opcional)* Para verificar la integridad de todos los módulos mediante la suite de pruebas unitarias (25 pruebas):
    ```bash
    python -m unittest discover -s tests -p "test_*.py" -v
+   ```
+
+5. *(Opcional)* Para regenerar el reporte de resultados experimentales (`documentacion/resultados_experimentos_busqueda.md`, casos 1–5, robustos `R01–R08` y adversariales 7–10):
+   ```bash
+   python experimentos/ejecutar_experimentos_busqueda.py
    ```
 
 ---
@@ -136,8 +142,9 @@ En la esquina superior derecha encontrará dos botones de selección que cambian
 * **Comportamiento:** Desbloquea todos los controles de la interfaz. Permite al usuario:
   - Cambiar libremente la unidad de origen.
   - Seleccionar la celda objetivo manualmente o **haciendo clic directamente sobre el tablero**.
-  - Alternar entre algoritmos (BFS, DFS, UCS, A*) y heurísticas.
-  - Modificar profundidades de Minimax y evaluar estados arbitrarios.
+  - Alternar entre algoritmos (BFS, DFS, UCS, A*, Beam Search) y heurísticas; al elegir `BEAM_SEARCH` aparece el campo `k` (ancho del haz).
+  - Seleccionar el controlador de cada bando (Humano, Alfa-Beta, Minimax, Azar) y la profundidad de Minimax.
+  - Evaluar estados arbitrarios con Minimax o Alfa-Beta y compararlos lado a lado.
 
 ---
 
@@ -164,6 +171,7 @@ Permite resolver problemas de navegación desde la posición de una unidad hasta
 | Unidad de inicio:  [ A1                  v ]                |
 | Objetivo (f, c):   [ 10 ]  [ 16 ]  (o haz clic en el mapa)  |
 | Heurística (A*):   [ propia              v ]                |
+| Ancho del haz (k): [ 2 ]   (solo visible con BEAM_SEARCH)   |
 | [X] Mostrar estados explorados                              |
 |                                                             |
 | [ Ejecutar búsqueda ] [ Comparar todos ] [ Verificar camino]|
@@ -177,20 +185,23 @@ Permite resolver problemas de navegación desde la posición de una unidad hasta
    - `DFS`: Exploración en profundidad (camino no óptimo, útil para observar ramas).
    - `UCS`: Ruta con el menor costo acumulado $g(n)$ considerando el terreno.
    - `A_ESTRELLA`: Búsqueda informada $f(n) = g(n) + h(n)$.
+   - `BEAM_SEARCH`: Búsqueda en haz con memoria acotada; solo expande los $k$ mejores estados de cada nivel.
 3. Si seleccionó `A_ESTRELLA`, elija la **Heurística**:
    - `manhattan`: Distancia Manhattan multiplicada por el costo mínimo del mapa (admisible).
    - `propia`: Heurística informada por el terreno de la meta (domina a Manhattan y expande menos nodos).
-   - `euclidiana`: Distancia en línea recta (más relajada).
-4. Indique la **Unidad de inicio** y la coordenada **Objetivo**. 
+   > [!NOTE]
+   > El código incluye también una tercera heurística, `euclidiana`, pero **no aparece en el desplegable de la interfaz** (es menos informada que Manhattan en cuadrículas ortogonales).
+4. Si seleccionó `BEAM_SEARCH`, ajuste el parámetro **`k`** (ancho del haz). Un `k` pequeño acelera la búsqueda pero puede quedar atrapado sin solución; un `k` grande se aproxima a A*.
+5. Indique la **Unidad de inicio** y la coordenada **Objetivo**. 
    > [!TIP]
    > En *Modo Exploración*, simplemente haga **clic izquierdo sobre una celda transitable del tablero** para fijarla como objetivo instantáneamente.
-5. Presione **`Ejecutar búsqueda`**:
+6. Presione **`Ejecutar búsqueda`**:
    - El tablero trazará la ruta en color cian y mostrará los nodos explorados con puntos ámbar.
    - La aplicación cambiará automáticamente a la pestaña **Resultados** para mostrar el tiempo en milisegundos, longitud, costo y nodos expandidos.
-6. Presione **`Verificar camino`**:
-   - Ejecuta el motor formal de verificación para comprobar que el camino no atraviese obstáculos, no contenga saltos diagonales y que el costo coincida al 100% con la suma real de los terrenos pisados.
-7. Presione **`Comparar todos`**:
-   - Ejecuta todos los algoritmos disponibles sobre el mismo problema de forma consecutiva y abre la pestaña **Comparación** para ver quién fue el más rápido, el más barato y el de menor expansión.
+7. Presione **`Verificar camino`**:
+   - Ejecuta el motor formal de verificación para comprobar que el camino no atraviese obstáculos, no contenga saltos diagonales y que el costo coincida al 100% con la suma real de los terrenos pisados. Si el algoritmo no encontró ruta, la columna de verificación muestra `—` (no hay nada que validar).
+8. Presione **`Comparar todos`**:
+   - Ejecuta todos los algoritmos disponibles (BFS, DFS, UCS, A* y Beam Search) sobre el mismo problema de forma consecutiva y abre la pestaña **Comparación** para ver quién fue el más rápido, el más barato y el de menor expansión.
 
 ---
 
@@ -214,6 +225,9 @@ Cada bando (`A` y `B`) puede ser asignado a:
 - **`Alfa-Beta`**: Inteligencia Artificial guiada por Minimax con poda $\alpha$-$\beta$.
 - **`Minimax`**: Inteligencia Artificial guiada por árbol Minimax exhaustivo.
 - **`Azar (provisional)`**: Realiza movimientos aleatorios legales.
+
+> [!NOTE]
+> Los controladores automático usan la **profundidad** configurada en la tarea `Decisión adversarial` (por defecto 3). `Alfa-Beta` ordena las acciones con la variante `heurístico` y `Minimax` con el orden `estandar`. Si el árbol no devuelve ninguna acción (o el estado ya es terminal), se elige una acción aleatoria legal o se detiene, respectivamente.
 
 #### Cómo Jugar en Modo Humano:
 1. En el tablero, haga **clic sobre una unidad de su bando** (en el turno correspondiente). La unidad quedará seleccionada.
@@ -260,6 +274,12 @@ Diseñado para analizar en profundidad cómo razona la IA frente a un adversario
 #### Botones de Acción:
 - **`Evaluar estado`**: Calcula el valor Minimax del tablero actual, la jugada recomendada, los nodos evaluados y podados, y resalta en el mapa la casilla hacia donde la IA aconseja mover, **sin alterar el estado de la partida**.
 - **`Evaluar y jugar`**: Calcula la mejor jugada y la ejecuta inmediatamente sobre el tablero, avanzando el turno.
+- Si el estado ya es terminal (hay ganador), ambos botones muestran el aviso `Fin de partida` y no ejecutan el algoritmo.
+
+#### Comparar Minimax contra Alfa-Beta:
+1. Estando en la tarea **`Decisión adversarial`**, abra la pestaña **Comparación** y pulse **`Comparar todos`**.
+2. La tabla mostrará dos filas (`MINIMAX` y `ALFA_BETA`) con la misma profundidad y el mismo orden de acciones, e indicará si ambos algoritmos eligieron la **misma acción**, sus valores y cuántos nodos evaluó y podó cada uno.
+3. Haga clic en una fila para resaltar la acción recomendada sobre el tablero.
 
 ---
 
@@ -269,6 +289,7 @@ Diseñado para analizar en profundidad cómo razona la IA frente a un adversario
 Muestra la ficha técnica completa de la última búsqueda o evaluación adversarial ejecutada:
 
 * **Métricas Principales:** Algoritmo, Éxito, Longitud del camino, Costo acumulado, Nodos generados, Nodos expandidos, Máximo de frontera y Tiempo de ejecución en milisegundos.
+* **En una evaluación adversarial** la misma tabla muestra: Algoritmo, Turno analizado, Acción recomendada, Valor obtenido, Profundidad explorada, Nodos generados, Nodos evaluados (hojas), Nodos podados, Tiempo (ms) y Orden de acciones.
 * **Detalle del Camino:** Lista ordenada de coordenadas `(fila, columna)` desde el origen hasta el objetivo.
 * **Diagnóstico de Verificación:** Lista de 6 comprobaciones automáticas con indicador de éxito (`✔`) o fallo (`✘`):
   1. Inicio en la celda correcta.
@@ -285,15 +306,17 @@ Muestra la ficha técnica completa de la última búsqueda o evaluación adversa
 * **Resumen por Algoritmo:** Tabla con los promedios históricos de costo, expansiones y tiempos de cada algoritmo ejecutado durante la sesión.
 * **Historial de Ejecuciones:** Bitácora detallada de cada prueba corrida.
 * **Gráfico de Barras Interactivo:** Canvas dinámico que grafica la métrica elegida (Tiempo, Nodos Expandidos, Costo, etc.).
-* **Comparador de Heurísticas (Abajo):** Permite seleccionar un algoritmo (ej. `A_ESTRELLA`) y comparar sus métricas evaluando simultáneamente las heurísticas Manhattan, Propia y Euclidiana sobre el mismo problema.
+* **Comparador de Heurísticas (Abajo):** Permite seleccionar un algoritmo (ej. `A_ESTRELLA`) y comparar sus métricas evaluando simultáneamente las heurísticas **Manhattan y Propia** sobre el mismo problema (solo aparece cuando el algoritmo activo es `A_ESTRELLA`).
 * **Exportar CSV:** Permite guardar todo el historial experimental en un archivo `.csv` compatible con Excel.
 
 ---
 
 ### 8.3 Panel de Comparación de Algoritmos (`Comparación`)
-Se activa al presionar el botón **`Comparar todos`** en la pestaña de búsqueda:
-* Presenta una tabla donde figuran BFS, DFS, UCS y A* lado a lado.
-* Indica quién logró el **menor costo**, el **camino más corto**, el **menor número de nodos expandidos** y la **mayor velocidad**.
+Se activa al presionar el botón **`Comparar todos`**. Según la tarea activa:
+
+* **Tarea `Búsqueda de ruta`:** tabla con BFS, DFS, UCS, A* y **Beam Search** lado a lado.
+* **Tarea `Decisión adversarial`:** tabla con **MINIMAX** y **ALFA_BETA** lado a lado (misma profundidad y orden de acciones), con columna de acción, valor, profundidad, nodos generados/evaluados/podados y tiempo. Al seleccionar una fila se resalta la acción en el tablero.
+* En ambos modos se indica quién logró el **menor costo**, el **camino más corto**, el **menor número de nodos expandidos** y la **mayor velocidad**.
 * **Interactividad en el mapa:** Al hacer clic sobre cualquier fila de la tabla, el tablero táctico cambiará inmediatamente para dibujar el camino y los nodos explorados por ese algoritmo específico, permitiendo contrastar visualmente las rutas.
 
 ---
@@ -313,19 +336,24 @@ A continuación se indica cómo cargar y demostrar ante el profesor cada uno de 
 | **Caso 1**<br>BFS vs DFS | `caso01_bfs_vs_dfs.json` | Cargar JSON $\to$ Pulsar `Comparar todos`. | Ambos encuentran camino. BFS halla la ruta más corta (menos movimientos); DFS recorre un camino largo y sinuoso. |
 | **Caso 2**<br>Ruta corta vs Económica | `caso2_ruta_corta_vs_economica.json` | Cargar JSON $\to$ Pulsar `Comparar todos`. | **BFS** toma 6 pasos atravesando pantano (costo 60). **UCS** toma 10 pasos rodeando por camino de costo 1 (costo total 19). Menos pasos resulta más costoso. |
 | **Caso 3**<br>Obstáculo y heurística | `caso3_obstaculo_y_heuristica.json` | Cargar JSON $\to$ Ejecutar `A_ESTRELLA` con Manhattan $\to$ Marcar `Mostrar explorados`. | La meta está cerca en línea recta, pero una trampa en "U" engaña a la heurística, obligándola a explorar el fondo antes de rodear. |
-| **Caso 4**<br>Comparación de heurísticas | `caso4_comparacion_heuristicas.json` | Ir a pestaña `Estadísticas` $\to$ Elegir `A_ESTRELLA` $\to$ Pulsar `Comparar heurísticas`. | Ambas hallan el costo óptimo idéntico (44), pero la **Heurística Propia** expande casi la mitad de nodos (163) que Manhattan (297) gracias a su dominancia. |
-| **Caso 5**<br>Beam Search | `caso05_beam_search.json` | Cargar JSON $\to$ Probar variando el parámetro $k$ en $\{1, 2, 4, 8\}$. | Con $k=1$, el algoritmo descarta alternativas y puede atascarse o no hallar solución; al incrementar $k$, la búsqueda recupera cobertura. |
+| **Caso 4**<br>Comparación de heurísticas | `caso4_comparacion_heuristicas.json` | Ir a pestaña `Estadísticas` $\to$ Elegir `A_ESTRELLA` $\to$ Pulsar `Comparar heurísticas`. | Ambas hallan el costo óptimo idéntico (52, longitud 22), pero la **Heurística Propia** expande menos nodos (232) que Manhattan (353) gracias a su dominancia; también es más rápida. |
+| **Caso 5**<br>Beam Search | `caso05_beam_search.json` | Cargar JSON $\to$ Probar variando el parámetro $k$ en $\{1, 2, 4, 8\}$. | Con $k=1$ y $k=2$ el haz queda atrapado y **no encuentra ruta**; con $k=4$ sí llega pero con camino subóptimo (costo 55); con $k=8$ alcanza el **óptimo 31**, el mismo que A* y UCS. |
 | **Caso 6**<br>Estado compuesto | `caso06a_sin_recurso.json`<br>`caso06b_con_recurso.json` | Ejecutar script:<br>`python experimentos/caso06_estado_compuesto.py` | La misma posición física $(10, 10)$ produce estados y hashes distintos porque en 6b la unidad lleva el recurso, habilitando acciones de intercepción. |
 | **Caso 7**<br>Decisión adversarial | `caso07_decision_adversarial.json` | Cargar JSON $\to$ Tarea `Decisión adversarial` $\to$ Pulsar `Evaluar estado`. | El rival B1 porta el recurso. Minimax recomienda mover a la casilla de B1 para **interceptarlo y eliminarlo**, en vez de correr ciegamente. |
 | **Caso 8**<br>Minimax vs Alfa-Beta | `caso08_minimax_vs_alfa_beta.json` | Evaluar con `MINIMAX` y luego con `ALFA_BETA` (misma prof. 3). | Ambos eligen **exactamente la misma jugada y el mismo valor**, pero Alfa-Beta evalúa un 83% menos de nodos gracias a las podas. |
 | **Caso 9**<br>Orden de acciones | `caso09_orden_acciones.json` | Evaluar con `ALFA_BETA` alternando `inverso` vs `heuristico`. | El orden heurístico (mejores acciones primero) reduce los nodos evaluados de 1,829 a solo 231 nodos. |
-| **Caso 10**<br>Profundidad Minimax | `caso10_profundidad.json` | Evaluar con profundidades 1, 2, 3 y 4. | Se evidencia cómo a mayor profundidad se anticipan mejor las respuestas rivales a cambio de un crecimiento de tiempo medido. |
+| **Caso 10**<br>Profundidad Minimax | `caso10_profundidad.json` | Evaluar con profundidades 1, 2, 3 y 4. | Los nodos evaluados crecen de 15 a 433 y el valor Minimax alterna (5.00, 0.00, 5.00, 0.00): cada capa extra anticipa mejor la respuesta rival a cambio de un crecimiento de tiempo medido. |
 
 > [!TIP]
 > Para ejecutar y visualizar automáticamente en consola un reporte consolidado de los Casos 7, 8, 9 y 10:
 > ```bash
 > python experimentos/ejecutar_casos_adversariales.py
 > ```
+> El reporte completo (casos 1–5, robustos `R01–R08` y adversariales 7–10) se regenera con:
+> ```bash
+> python experimentos/ejecutar_experimentos_busqueda.py
+> ```
+> y queda guardado en `documentacion/resultados_experimentos_busqueda.md`.
 
 ---
 
@@ -350,6 +378,8 @@ Para utilizarlos, cargue el archivo con **`Cargar JSON…`** y observe el compor
 
 > [!NOTE]
 > Si alguno de estos archivos se muestra como inválido, se trata de un defecto de validación: estos escenarios fueron construidos para ser aceptados.
+>
+> Los robustos `R01` a `R08` (los de modo búsqueda) se ejecutan automáticamente y sus métricas quedan registradas en `documentacion/resultados_experimentos_busqueda.md` al correr `python experimentos/ejecutar_experimentos_busqueda.py`. `R09` y `R10` se validan cargándolos en la interfaz.
 
 ---
 
@@ -390,6 +420,15 @@ En la pestaña **`Estadísticas`**, pulse el botón **`Exportar CSV`**. Esto gua
 
 ### 4. ¿Por qué Minimax tarda mucho tiempo en profundidades mayores a 5?
 El árbol de juego en mapas de $20 \times 20$ con varias unidades tiene un factor de ramificación alto ($b \approx 15\text{--}25$). Por ello, la complejidad temporal de Minimax es exponencial ($O(b^d)$). Para profundidades de 3 a 5 se recomienda utilizar **Alfa-Beta** con orden de acciones **heurístico**, el cual reduce significativamente el espacio de búsqueda.
+
+### 5. ¿Beam Search no encuentra ruta con `k` pequeño, es un error?
+No. Con un ancho de haz reducido la búsqueda solo conserva los $k$ mejores estados de cada nivel y puede descartar la única ruta viable (por ejemplo, en el Caso 5 ni `k=1` ni `k=2` encuentran camino). Incrementa `k` (4 u 8) hasta recuperar una solución; con `k` suficientemente grande se alcanza el mismo costo óptimo que A*.
+
+### 6. ¿El botón `Evaluar estado` responde "Fin de partida"?
+El estado actual ya es terminal: existe un ganador (o bien el portador alcanzó su base, o bien un bando perdió todas sus unidades). Minimax y Alfa-Beta solo se ejecutan sobre estados no terminales; reinicia la partida para evaluar un nuevo árbol.
+
+### 7. ¿La columna `Verif.` de la comparación muestra "—"?
+Significa que ese algoritmo no encontró camino (o el objetivo era un muro, y por lo tanto la búsqueda se rechazó). Solo se verifica el camino cuando existe y llega a la meta; no es un fallo de verificación.
 
 ---
 *Fin del Manual de Usuario.*

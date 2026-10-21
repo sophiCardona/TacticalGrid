@@ -8,15 +8,16 @@
 | Descripción corta | Escaramuza táctica 2D por turnos — Sistemas Inteligentes I |
 | Integrantes del equipo | • Sophia Cardona<br>• Danna Alexandra Madrid Roa<br>• Michel Dahiana Arenas López |
 | Asignatura / Programa | Sistemas Inteligentes I — Ingeniería de Sistemas y Computación — Universidad de Caldas |
-| Versión del proyecto | 1.0 (Octubre 2026) |
+| Versión del proyecto | 1.1 (Octubre 2026) |
 | Versión del formato de escenario | `1.0` (campo `version` de los archivos JSON; no es la versión del software) |
 | Rama Git analizada | `main` |
-| Último commit analizado | `36782b9` — «Modificacion seccion de Compacion en heuristicas, interfaz» — 2026-10-19 11:29:20 -0500 |
+| Último commit analizado | `ae0664c` — «Modifica una linea» — 2026-10-20 23:20:29 -0500 (los commits previos `b713b72` e `3f1fa40` integran la interfaz y el módulo de Minimax/alfa-beta) |
 | Fecha de elaboración del manual | 2026-10-19 |
+| Fecha de última actualización | 2026-10-20 (incorpora Beam Search, Minimax/alfa-beta, pruebas y resultados experimentales nuevos) |
 | Elaboración | Generado a partir del código fuente, archivos JSON, pruebas y documentación existentes |
-| Interprete verificado en el entorno de elaboración | Python 3.12.0 |
+| Interprete verificado en el entorno de elaboración | Python 3.12.0 (versión inicial) y Python 3.14.0 (versión de la re-ejecución de pruebas y experimentos del 2026-10-20) |
 
-> Este documento se basa exclusivamente en los archivos presentes en el repositorio. Todo dato no verificable se marca expresamente. No se modificó código fuente durante su elaboración.
+> Este documento se basa exclusivamente en los archivos presentes en el repositorio. Todo dato no verificable se marca expresamente. La actualización del 2026-10-20 se realizó sobre el commit `ae0664c` más los cambios sin commitear indicados en la sección [15.2](#152-deuda-técnica-y-limitaciones-verificables). Durante esta actualización se modificaron únicamente dos archivos de prueba/experimentación (no la lógica de los algoritmos): `tests/test_beam_search.py` (el criterio de éxito de `k=2` se alineó con el comportamiento real medido) y `experimentos/ejecutar_experimentos_busqueda.py` (se añadieron los casos robustos y adversariales).
 
 ---
 
@@ -35,6 +36,8 @@
    - [7.4 Entidades Internas y Clases de Python](#74-entidades-internas-código)
 8. [Descripción técnica de clases, funciones y métodos](#8-descripción-técnica-de-clases-funciones-y-métodos)
    - [8.5 Heurísticas y Demostración Formal (Admisibilidad, Consistencia y Dominancia)](#85-algoritmosa_estrellapy-y-demostración-formal-de-heurísticas)
+   - [8.6 Beam Search (Búsqueda en Haz con memoria acotada `k`)](#86-algoritmosbeam_searchpy--búsqueda-en-haz-con-memoria-acotada)
+   - [8.7 Minimax y poda Alfa-Beta (búsqueda adversarial)](#87-algoritmosminimappy--minimax-y-poda-alfa-beta)
 9. [Parámetros, tipos, retornos, excepciones y efectos secundarios](#9-parámetros-tipos-retornos-excepciones-y-efectos-secundarios)
 10. [Configuración, instalación y ejecución](#10-configuración-instalación-y-ejecución)
 11. [Pruebas existentes y mecanismos de validación](#11-pruebas-existentes-y-mecanismos-de-validación)
@@ -66,9 +69,10 @@ El sistema está organizado en capas: modelo de escenario, modelo de juego y reg
 Proveer una herramienta académica para:
 
 1. Modelar un escenario táctico en una cuadrícula con terrenos de distinto costo.
-2. Ejecutar y comparar algoritmos de búsqueda (BFS, DFS, UCS, A*).
+2. Ejecutar y comparar algoritmos de búsqueda (BFS, DFS, UCS, A* y Beam Search).
 3. Verificar automáticamente que un camino hallado cumple las propiedades exigidas.
 4. Simular una partida por turnos con reglas deterministas (movimiento, recogida e interceptación de un recurso, condición de victoria).
+5. Resolver decisiones adversariales con Minimax y poda alfa-beta, tanto de forma aislada como como controlador de un bando en la partida.
 
 ### 3.3 Alcance técnico verificado
 
@@ -80,15 +84,15 @@ Proveer una herramienta académica para:
 | Condición de victoria | Implementada |
 | BFS, DFS | Implementados |
 | UCS (Dijkstra) | Implementado |
-| A* con heurísticas `manhattan` y `propia` | Implementado |
+| A* con heurísticas `manhattan`, `propia` y `euclidiana` | Implementado |
+| Beam Search (`k`) | **Implementado**: registrado como `BEAM_SEARCH`; probado con `k = 1, 2, 4, 8` |
 | Verificación de caminos | Implementada |
 | Interfaz gráfica con cinco pestañas | Implementada |
-| Comparación de todos los algoritmos | Implementada |
+| Comparación de todos los algoritmos de búsqueda | Implementada |
 | Comparación de heurísticas de A* en Estadísticas | Implementada |
 | Exportación del historial a CSV | Implementada |
-| Partida por turnos con control humano y control «Azar» | Parcial (el único controlador automático es aleatorio) |
-| Tarea adversarial (Minimax / alfa-beta) | **Pendiente**: solo lista acciones legales |
-| Beam Search (`k`) | **Pendiente**: aparece como planificado y hay un escenario que lo referencia, pero no está registrado |
+| Partida por turnos con control Humano, «Azar», Minimax y Alfa-Beta | Implementada |
+| Tarea adversarial (Minimax / alfa-beta) | **Implementada**: evalúa el estado, compara ambos algoritmos y aplica la jugada |
 
 La aplicación no utiliza servicios de red, bases de datos ni almacenamiento persistente más allá de la lectura de archivos JSON y la escritura opcional de un CSV.
 
@@ -116,9 +120,9 @@ Todas las importaciones corresponden a la biblioteca estándar de Python. No se 
 | `json` | Lectura de escenarios y serialización de resultados | `escenario/cargador.py`, `interfaz/app.py` |
 | `heapq` | Colas de prioridad de UCS y A* | `algoritmos/busqueda_con_costo.py`, `algoritmos/a_estrella.py` |
 | `collections.deque` | Frontera FIFO de BFS | `algoritmos/busqueda_no_informada.py` |
-| `dataclasses` | Entidades inmutables y resultado de búsqueda | `escenario/mapa.py`, `escenario/modelos.py`, `juego/estado.py`, `algoritmos/base.py` |
+| `dataclasses` | Entidades inmutables, resultado de búsqueda y resultado adversarial | `escenario/mapa.py`, `escenario/modelos.py`, `juego/estado.py`, `algoritmos/base.py`, `algoritmos/minimax.py` |
 | `typing.Optional` | Anotaciones de tipo | `escenario/modelos.py`, `juego/estado.py`, `algoritmos/base.py` |
-| `time` | Medición de tiempo con `perf_counter` | `algoritmos/base.py` |
+| `time` | Medición de tiempo con `perf_counter` | `algoritmos/base.py`, `algoritmos/minimax.py` |
 | `random` | Controlador «Azar» de la partida y generación de casos | `interfaz/app.py`, `experimentos/generar_casos_minimos.py` |
 | `csv` | Exportación del historial | `interfaz/app.py` |
 | `os`, `sys` | Rutas y ajuste de `sys.path` en scripts y pruebas | `interfaz/app.py`, `tests/*.py`, `experimentos/*.py` |
@@ -137,10 +141,10 @@ Todas las importaciones corresponden a la biblioteca estándar de Python. No se 
 
 ### 4.4 Directorios sin contenido
 
-- `docs/`: existe en el sistema de archivos, sin archivos.
 - `heuristicas/`: existe en el sistema de archivos, sin archivos.
+- `docs/`: **ya no existe** en el sistema de archivos (constaba como vacío en la versión 1.0 del manual).
 
-> Al estar vacíos, Git no los versiona. Su contenido es `[PENDIENTE DE IMPLEMENTACIÓN]`.
+> Al estar vacío, Git no versiona `heuristicas/`. Su contenido es `[PENDIENTE DE IMPLEMENTACIÓN]`. La documentación del proyecto vive en `documentacion/` (manual técnico, manual de usuario y resultados experimentales).
 
 ---
 
@@ -156,7 +160,9 @@ TacticalGrid/
 │   ├── base.py
 │   ├── busqueda_no_informada.py
 │   ├── busqueda_con_costo.py
-│   └── a_estrella.py
+│   ├── a_estrella.py
+│   ├── beam_search.py
+│   └── minimax.py
 ├── escenario/
 │   ├── mapa.py
 │   ├── modelos.py
@@ -172,13 +178,27 @@ TacticalGrid/
 │   └── graficas.py
 ├── verificacion/
 │   └── verificador.py
+├── documentacion/
+│   ├── manual_tecnico.md
+│   ├── manual_de_usuario.md
+│   └── resultados_experimentos_busqueda.md
+├── resultados/
+│   ├── tabla_esperado_vs_obtenido.csv
+│   └── tabla_esperado_vs_obtenido.md
 ├── tests/
 │   ├── test_paso1_2.py
 │   ├── test_paso3_ucs.py
-│   └── test_paso4_a_estrella.py
+│   ├── test_paso4_a_estrella.py
+│   ├── test_beam_search.py
+│   └── test_minimax.py
 ├── experimentos/
 │   ├── generar_casos_minimos.py
-│   └── caso06_estado_compuesto.py
+│   ├── generar_casos_robustez.py
+│   ├── caso06_estado_compuesto.py
+│   ├── ejecutar_experimentos_busqueda.py
+│   ├── ejecutar_casos_adversariales.py
+│   ├── ejecutar_casos.py
+│   └── esperados.json
 ├── escenarios/
 │   ├── ejemplo.json
 │   ├── prueba_busqueda_dfs.json
@@ -192,7 +212,11 @@ TacticalGrid/
 │   │   ├── caso4_comparacion_heuristicas.json
 │   │   ├── caso05_beam_search.json
 │   │   ├── caso06a_sin_recurso.json
-│   │   └── caso06b_con_recurso.json
+│   │   ├── caso06b_con_recurso.json
+│   │   ├── caso07_decision_adversarial.json
+│   │   ├── caso08_minimax_vs_alfa_beta.json
+│   │   ├── caso09_orden_acciones.json
+│   │   └── caso10_profundidad.json
 │   ├── casos_invalidos/
 │   │   ├── inv01_dimensiones_inconsistentes.json
 │   │   ├── inv02_terreno_inexistente.json
@@ -217,7 +241,6 @@ TacticalGrid/
 │       ├── r08_mapa_grande_40x40.json
 │       ├── r09_portador_en_su_base.json
 │       └── r10_unidad_sobre_el_recurso.json
-├── docs/              (vacío)
 └── heuristicas/       (vacío)
 ```
 
@@ -232,7 +255,9 @@ TacticalGrid/
 | `algoritmos/base.py` | Contrato común, registro de algoritmos, métricas (`ResultadoBusqueda`), reconstrucción de caminos y medición de tiempo | Implementado |
 | `algoritmos/busqueda_no_informada.py` | BFS y DFS | Implementados |
 | `algoritmos/busqueda_con_costo.py` | UCS / Dijkstra | Implementado |
-| `algoritmos/a_estrella.py` | A*, heurísticas `manhattan` y `propia`, selector de heurística | Implementado |
+| `algoritmos/a_estrella.py` | A*, heurísticas `manhattan`, `propia` y `euclidiana`, selector de heurística | Implementado |
+| `algoritmos/beam_search.py` | Beam Search (`BEAM_SEARCH`) con ancho de haz `k` y heurística configurable | Implementado |
+| `algoritmos/minimax.py` | Minimax y poda alfa-beta sobre el estado compuesto, con `ResultadoAdversarial` | Implementado |
 | `escenario/mapa.py` | Representación de la cuadrícula y consultas de terreno | Implementado |
 | `escenario/modelos.py` | `Escenario` validado y construcción del estado inicial | Implementado |
 | `escenario/cargador.py` | Lectura JSON, validación y construcción «todo o nada» | Implementado |
@@ -244,9 +269,16 @@ TacticalGrid/
 | `interfaz/tablero.py` | Widget de dibujo del tablero y paleta de colores | Implementado |
 | `interfaz/graficas.py` | Gráfico de barras simple sobre un `Canvas` | Implementado |
 | `verificacion/verificador.py` | Comprobaciones de validez de un camino | Implementado |
-| `tests/*.py` | Pruebas unitarias con `unittest` | Implementado |
+| `tests/*.py` | Pruebas unitarias con `unittest` (carga/reglas, UCS, A*, Beam Search y Minimax/alfa-beta) | Implementado |
 | `experimentos/generar_casos_minimos.py` | Generación reproducible de los casos mínimos 1, 5 y 6 | Implementado |
+| `experimentos/generar_casos_robustez.py` | Generación reproducible del caso 2, de los 10 escenarios robustos y de los 12 inválidos | Implementado |
 | `experimentos/caso06_estado_compuesto.py` | Demostración por consola del caso 6 | Implementado |
+| `experimentos/ejecutar_experimentos_busqueda.py` | Genera `documentacion/resultados_experimentos_busqueda.md` (casos 1–5, robustos R01–R08 y adversariales 7–10) | Implementado |
+| `experimentos/ejecutar_casos_adversariales.py` | Reporte por consola de los casos 7, 8, 9 y 10 | Implementado |
+| `experimentos/esperados.json` | Declaración de valores esperados previos a la ejecución (C01–C10, R01–R10, V01–V12) | Implementado |
+| `experimentos/ejecutar_casos.py` | Tabla esperado vs. obtenido a partir de `esperados.json` | **No ejecutable** (importa módulos inexistentes; véase [15.2](#152-deuda-técnica-y-limitaciones-verificables)) |
+| `documentacion/*.md` | Manual técnico, manual de usuario y resultados experimentales | Implementado |
+| `resultados/tabla_esperado_vs_obtenido.*` | Salida generada por `ejecutar_casos.py` | **Desactualizada** (todas las filas dicen `DIFIERE` por rutas inexistentes de una corrida anterior) |
 | `escenarios/*.json` | Datos de escenario y pruebas declarativas | Implementado |
 
 ---
@@ -261,13 +293,16 @@ TacticalGrid/
 │   interfaz/app.py   interfaz/tablero.py   interfaz/graficas.py│
 └───────────────┬──────────────────────────────────────────────┘
                 │ invoca
-┌───────────────▼──────────────┐   ┌─────────────────────────┐
-│ Juego                        │   │ Algoritmos de búsqueda  │
-│   juego/estado.py            │   │   algoritmos/base.py    │
-│   juego/reglas.py            │   │   busqueda_no_informada  │
-│   juego/problema_navegacion  │   │   busqueda_con_costo     │
-└───────────────┬──────────────┘   │   a_estrella             │
-                │                  └───────────┬─────────────┘
+┌───────────────▼──────────────┐   ┌─────────────────────────────┐
+│ Juego                        │   │ Algoritmos de búsqueda y    │
+│   juego/estado.py            │   │ decisión                    │
+│   juego/reglas.py            │   │   algoritmos/base.py        │
+│   juego/problema_navegacion  │   │   busqueda_no_informada     │
+└───────────────┬──────────────┘   │   busqueda_con_costo        │
+                │                  │   a_estrella                │
+                │                  │   beam_search               │
+                │                  │   minimax (usa Reglas)      │
+                │                  └───────────┬─────────────────┘
                 │ usa                          │ usa
 ┌───────────────▼──────────────┐   ┌───────────▼─────────────┐
 │ Escenario                    │   │ Verificación            │
@@ -283,10 +318,12 @@ TacticalGrid/
 | Módulo | Importa de |
 |---|---|
 | `main.py` | `interfaz.app` |
-| `interfaz/app.py` | `algoritmos`, `algoritmos.base`, `escenario.cargador`, `interfaz.graficas`, `interfaz.tablero`, `juego.problema_navegacion`, `juego.reglas`, `verificacion.verificador` |
+| `interfaz/app.py` | `algoritmos`, `algoritmos.base`, `algoritmos.minimax`, `escenario.cargador`, `interfaz.graficas`, `interfaz.tablero`, `juego.problema_navegacion`, `juego.reglas`, `verificacion.verificador` |
 | `interfaz/graficas.py` | `interfaz.tablero` |
 | `interfaz/tablero.py` | Solo `tkinter` |
-| `algoritmos/*` | `algoritmos.base` |
+| `algoritmos/busqueda_no_informada.py`, `busqueda_con_costo.py`, `a_estrella.py`, `base.py` | `algoritmos.base` |
+| `algoritmos/beam_search.py` | `algoritmos.base` y `algoritmos.a_estrella` (`obtener_heuristica`) |
+| `algoritmos/minimax.py` | Ninguno del proyecto (solo `dataclasses` y `time`); recibe `reglas` y el estado por parámetro |
 | `escenario/cargador.py` | `escenario.mapa`, `escenario.modelos`, `escenario.validador`, `juego.estado` |
 | `escenario/modelos.py` | `escenario.mapa`, `juego.estado` |
 | `juego/reglas.py` | `escenario.mapa` (`DIRECCIONES`), `juego.estado` |
@@ -314,9 +351,9 @@ No se detectaron dependencias circulares a nivel de importación. `escenario.mod
    - `verificar_camino(...)` produce las comprobaciones.
    - Se agrega un registro al historial y se muestran resultados y métricas.
    - Si el algoritmo es A*, además se ejecuta la comparación entre heurísticas.
-7. **Comparación de algoritmos**: `comparar_todos()` ejecuta todos los algoritmos registrados sobre el mismo problema.
-8. **Partida**: clics en el tablero → `Reglas.acciones_legales` / `Reglas.aplicar`; el bando «Azar» elige una acción aleatoria.
-9. **Adversarial**: `_ejecutar_adversarial()` solo registra en el log las acciones legales del estado; el cálculo Minimax/alfa-beta no está implementado.
+7. **Comparación de algoritmos de búsqueda**: `comparar_todos()` ejecuta todos los algoritmos de búsqueda registrados (BFS, DFS, UCS, A*, Beam Search) sobre el mismo problema.
+8. **Partida**: clics en el tablero → `Reglas.acciones_legales` / `Reglas.aplicar`; los bandos automáticos («Azar», Minimax, Alfa-Beta) eligen su acción solos.
+9. **Adversarial**: `_ejecutar_adversarial()` evalúa el estado compuesto con `_evaluar_y_aplicar_adversarial()`, que corre Minimax y Alfa-Beta en paralelo vía `_correr_adversarial()`, aplica la jugada elegida y la resalta en el tablero; `_mostrar_resultado_adversarial()` vuelca métricas y la comparación al panel.
 
 ### 6.4 Componentes y relaciones
 
@@ -326,8 +363,10 @@ No se detectaron dependencias circulares a nivel de importación. `escenario.mod
 | `Escenario` | Datos validados del escenario | Produce `Estado` inicial; usado por `Reglas` y la interfaz |
 | `Unidad`, `Estado`, `Accion` | Modelo inmutable del juego | Entradas/salidas de `Reglas` |
 | `Reglas` | Legalidad, transición, costo, victoria | Orquesta el estado del juego |
-| `ProblemaNavegacion` | Interfaz del problema para búsqueda | Consumida por todos los algoritmos |
-| `ResultadoBusqueda` | Resultado y métricas | Producida por algoritmos, consumida por interfaz y verificador |
+| `ProblemaNavegacion` | Interfaz del problema para búsqueda | Consumida por los algoritmos de búsqueda (BFS, DFS, UCS, A*, Beam Search) |
+| `ResultadoBusqueda` | Resultado y métricas de una búsqueda | Producida por algoritmos de búsqueda, consumida por interfaz y verificador |
+| `ResultadoAdversarial` | Resultado y métricas de una decisión adversarial | Producida por `minimax()`/`alfa_beta()`, consumida por la interfaz y los experimentos |
+| `minimax` / `alfa_beta` | Búsqueda adversarial sobre el estado compuesto | Reciben `Reglas`, estado inicial y profundidad; usan `Reglas.acciones_legales`/`aplicar` |
 | Registro de algoritmos (`REGISTRO`) | Descubrimiento de algoritmos | Poblado por decorador `@registrar` al importar `algoritmos` |
 | `Tablero` | Dibujo | Recibe escenario, estado y capas visuales |
 | `verificar_camino` | Validación independiente | Recibe mapa, inicio, objetivo y resultado |
@@ -463,7 +502,7 @@ $$|S_{\text{juego}}| = 2 \times 360 \times (2.147 \times 10^{15}) \approx 1.546 
 
 ### 7.4 Entidades internas (código)
 
-#### 7.1.1 `Mapa` — `escenario/mapa.py`
+#### 7.4.1 `Mapa` — `escenario/mapa.py`
 
 `@dataclass(frozen=True)`
 
@@ -484,7 +523,7 @@ DIRECCIONES = (("ARRIBA", -1, 0), ("ABAJO", 1, 0), ("IZQUIERDA", 0, -1), ("DEREC
 
 El orden es determinista y afecta el orden de generación de sucesores.
 
-#### 7.1.2 `Unidad` — `juego/estado.py`
+#### 7.4.2 `Unidad` — `juego/estado.py`
 
 `@dataclass(frozen=True)`
 
@@ -497,7 +536,7 @@ El orden es determinista y afecta el orden de generación de sucesores.
 
 El campo `tipo` presente en el JSON **no se traslada** a `Unidad` (véase `escenario/cargador.py`, línea 34).
 
-#### 7.1.3 `Estado` — `juego/estado.py`
+#### 7.4.3 `Estado` — `juego/estado.py`
 
 `@dataclass(frozen=True)`
 
@@ -510,7 +549,7 @@ El campo `tipo` presente en el JSON **no se traslada** a `Unidad` (véase `escen
 
 Al ser `frozen` y contener solo tuplas y cadenas, es hashable. La prueba `test_hashable_e_inmutable` lo comprueba.
 
-#### 7.1.4 `Accion` — `juego/estado.py`
+#### 7.4.4 `Accion` — `juego/estado.py`
 
 `@dataclass(frozen=True)`
 
@@ -520,7 +559,7 @@ Al ser `frozen` y contener solo tuplas y cadenas, es hashable. La prueba `test_h
 | `tipo` | `str` | `"MOVER"` o `"ESPERAR"` |
 | `destino` | `Optional[tuple]` | `(f, c)` para `"MOVER"`; valor por defecto `None` |
 
-#### 7.1.5 `Escenario` — `escenario/modelos.py`
+#### 7.4.5 `Escenario` — `escenario/modelos.py`
 
 `@dataclass(frozen=True)`
 
@@ -535,7 +574,7 @@ Al ser `frozen` y contener solo tuplas y cadenas, es hashable. La prueba `test_h
 | `profundidad_minimax` | `int` | Profundidad máxima declarada |
 | `prueba` | `Optional[dict]` | Bloque `prueba` del JSON, sin transformar |
 
-#### 7.1.6 `ResultadoBusqueda` — `algoritmos/base.py`
+#### 7.4.6 `ResultadoBusqueda` — `algoritmos/base.py`
 
 `@dataclass` (mutable; no `frozen`)
 
@@ -553,6 +592,24 @@ Al ser `frozen` y contener solo tuplas y cadenas, es hashable. La prueba `test_h
 | `parametros` | `dict` (`{}`) | Parámetros con los que se ejecutó |
 
 Propiedad `longitud`: `len(camino) - 1` si `exito` y hay camino; en caso contrario `None`.
+
+#### 7.4.7 `ResultadoAdversarial` — `algoritmos/minimax.py`
+
+`@dataclass` (mutable)
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `algoritmo` | `str` | `"MINIMAX"` o `"ALFA_BETA"` |
+| `accion` | `Accion` o `None` | Mejor acción hallada desde la perspectiva inicial |
+| `valor` | `float` | Utilidad minimax del estado raíz para esa perspectiva |
+| `profundidad_maxima` | `int` | Nivel de *plies* explorado |
+| `nodos_generados` | `int` | Estados hijos creados durante la exploración |
+| `nodos_evaluados` | `int` | Hojas/estados sin acciones cuya utilidad se calculó |
+| `nodos_podados` | `int` | Ramas hermanas descartadas por el corte $\alpha \ge \beta$ (0 en Minimax puro) |
+| `tiempo_ms` | `float` | Duración medida con `perf_counter` |
+| `orden_acciones` | `str` | `estandar`, `inverso` o `heuristico` |
+
+Método `a_dict()`: serializa a `dict` (acción reducida a `unidad_id`, `tipo` y `destino`; `None` si no hay acción) para el panel de resultados y los experimentos.
 
 ### 7.5 Formato JSON del escenario
 
@@ -611,7 +668,7 @@ Convención de estado: **Implementado** = funcionalidad conectada y con lógica 
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
-| Constante `PLANIFICADOS` | 12 | Tupla de pares `(clave, nombre visible)` de algoritmos previstos: `("UCS", "Costo uniforme")`, `("A_ESTRELLA", "A*")`, `("BEAM_SEARCH", "Beam Search")` | Informativo |
+| Constante `PLANIFICADOS` | 12 | Tuple vacía `()` (todos los algoritmos previstos ya están implementados); su comentario documenta `BFS, DFS, UCS, A*, Beam Search` | Informativo (sin uso pendiente) |
 | `REGISTRO` | 14 | Diccionario global `nombre → función` | Implementado |
 | `ResultadoBusqueda` | 18 | Contenedor de resultados y métricas | Implementado |
 | `ResultadoBusqueda.longitud` | 32 | Propiedad calculada del número de movimientos | Implementado |
@@ -620,9 +677,9 @@ Convención de estado: **Implementado** = funcionalidad conectada y con lógica 
 | `disponibles()` | 54 | Lista de nombres registrados en orden de inserción | Implementado |
 | `normalizar_nombre(texto)` | 59 | Normaliza `a*` → `A_ESTRELLA`, espacios/guiones → `_` | Implementado |
 | `reconstruir_camino(padre, meta)` | 65 | Reconstruye el camino y suma costos siguiendo `padre` | Implementado |
-| `ejecutar_algoritmo(nombre, problema, **params)` | 84 | Invoca el algoritmo registrado, mide tiempo y adjunta parámetros | Implementado |
+| `ejecutar_algoritmo(nombre, problema, **params)` | 84 | Invoca el algoritmo registrado, mide tiempo y adjunta parámetros (`k`, `heuristica`) | Implementado |
 
-Orden de registro efectivo al importar `algoritmos`: `BFS`, `DFS`, `UCS`, `A_ESTRELLA` (determinado por el orden de importación en `algoritmos/__init__.py` y por el orden de las funciones decoradas).
+Orden de registro efectivo al importar `algoritmos`: `BFS`, `DFS`, `UCS`, `A_ESTRELLA`, `BEAM_SEARCH` (determinado por el orden de importación en `algoritmos/__init__.py` y por el orden de las funciones decoradas).
 
 ### 8.3 `algoritmos/busqueda_no_informada.py`
 
@@ -808,9 +865,71 @@ Cualquier estado $s$ para el cual $f_2(s) > C^*$ será podado de la expansión p
 En el experimento cuantitativo del **Caso 4** (`caso4_comparacion_heuristicas.json`), donde el objetivo $g$ está ubicado en una celda de pantano ($c=7 > c_{\min}=1$):
 - **A* con Heurística Manhattan:** Expandió **353 estados**.
 - **A* con Heurística Propia:** Expandió **232 estados**.
-- **Ahorro observado:** Se evitaron **121 expansiones de nodos** (una reducción del **34.3%** en el esfuerzo de búsqueda y del **26.4%** en tiempo de CPU) encontrando idéntico camino de costo óptimo $C^* = 52.0$.
+- **Ahorro observado:** Se evitaron **121 expansiones de nodos** (una reducción del **34.3%** en el esfuerzo de búsqueda y del **27.6%** en tiempo de CPU: 2.218 ms frente a 3.062 ms en la corrida del 2026-10-20) encontrando idéntico camino de costo óptimo $C^* = 52.0$.
 
-### 8.6 `escenario/mapa.py`
+### 8.6 `algoritmos/beam_search.py` — Búsqueda en Haz con memoria acotada `k`
+
+| Elemento | Línea | Responsabilidad | Estado |
+|---|---|---|---|
+| `_exito(nombre, padre, meta, gen, exp, mf, explorados)` | 6 | Construye `ResultadoBusqueda` exitoso reconstruyendo el camino | Implementado |
+| `beam_search(problema, **params)` | 21 | Haz de anchura `k`; expande solo los `k` mejores estados de cada nivel, ordenados por heurística | Implementado (`@registrar("BEAM_SEARCH")`) |
+
+Comportamiento verificado:
+- **Parámetros:** `k` (por defecto `2`, forzado a `max(1, int(k))`; texto no numérico → `2`) y `heuristica` (`manhattan` por defecto, las mismas claves que A* vía `obtener_heuristica`).
+- **Criterio de éxito:** la prueba de objetivo se hace **al inicio de cada nivel**, sobre los estados ya en el haz; los sucesores que no alcanzan el haz no se comprueban. Si el haz se vacía (sin candidatos) se termina con `exito = False` y `camino = []`.
+- **Selección:** los candidatos del nivel se ordenan por tupla `(h(s), s)`, por lo que el desempate es determinista por orden lexicográfico del estado; se descartan duplicados del mismo nivel con `vistos_nivel`.
+- **Métricas:** `estados_generados` cuenta los sucesores generados (padres registrados en `padre`), `estados_expandidos` los estados del haz realmente expandidos y `maximo_frontera` el mayor tamaño alcanzado por el haz (≤ `k`).
+
+Resultados del Caso 5 (`caso05_beam_search.json`), re-ejecutados el 2026-10-20 (5 repeticiones, tiempo promedio):
+
+| `k` | ¿Encuentra ruta? | Longitud | Costo | Generados | Expandidos | Máx. frontera | Tiempo (ms) |
+|---|---|---|---|---|---|---|---|
+| 1 | No | — | — | 25 | 9 | 1 | 0.206 |
+| 2 | No | — | — | 31 | 17 | 2 | 0.286 |
+| 4 | Sí | 55 | 55.0 | 266 | 213 | 4 | 3.037 |
+| 8 | Sí | 31 (óptimo) | 31.0 | 276 | 234 | 8 | 2.906 |
+
+(Líneas base del mismo escenario: BFS y A* encuentran el óptimo de 31 movimientos / costo 31.0; la verificación da `OK` para `k=4` y `k=8`.)
+
+> **Nota de coherencia experimental:** la versión 1.0 del manual declaraba que `k=2` *sí* hallaba ruta. La re-ejecución muestra que `k=1` y `k=2` fracasan en este mapa, que `k=4` sortea el obstáculo con una solución **subóptima** (55 en vez de 31) y que `k=8` recupera el óptimo. La prueba `test_beam_search.py` se ajustó a este comportamiento medido (ver §11.1).
+
+Observación teórica: con `h` admisible, **Beam Search no garantiza optimalidad** (podó estados en niveles anteriores que podrían contener el camino óptimo); el costo reportado es el del mejor camino encontrado, no necesariamente $C^*$. Su ventaja es el uso acotado de memoria: $O(k \cdot d)$ frente a $O(b^d)$ de DFS.
+
+### 8.7 `algoritmos/minimax.py` — Minimax y poda Alfa-Beta
+
+| Elemento | Línea | Responsabilidad | Estado |
+|---|---|---|---|
+| `ResultadoAdversarial` | 11 | `dataclass` con acción, valor, profundidad, nodos generados/evaluados/podados, tiempo y orden | Implementado |
+| `ResultadoAdversarial.a_dict()` | 22 | Serialización (acción → `unidad_id`/`tipo`/`destino`) | Implementado |
+| `_distancia(a, b)` | 40 | Distancia Manhattan entre celdas (0 si alguno es `None`) | Implementado |
+| `_utilidad(estado, reglas, escenario, perspectiva)` | 46 | Función de evaluación heurística (ver más abajo) | Implementado |
+| `_clave_accion(accion)` | 75 | Clave de desempate `(unidad_id, tipo, destino)` para orden determinista | Implementado |
+| `_acciones_ordenadas(...)` | 79 | Ordena las acciones legales según `orden_acciones`: `estandar`, `inverso`, `heuristico` | Implementado |
+| `_buscar(...)` | 92 | Núcleo recursivo con o sin poda; contadores y cronómetro | Implementado |
+| `minimax(estado, reglas, escenario, profundidad_maxima=3, orden_acciones="estandar")` | 135 | Búsqueda adversarial sin poda (`con_poda=False`) | Implementado |
+| `alfa_beta(...)` | 145 | Misma búsqueda con poda alfa-beta (`con_poda=True`) | Implementado |
+
+**Semántica.** Ambas funciones comparten `_buscar`: la utilidad se evalúa **desde la perspectiva del bando que inicia la búsqueda** (`perspectiva = estado.turno`), la profundidad cuenta *plies* (acciones individuales, no rondas) y el nodo maximizador es aquel cuyo `s.turno` coincide con `perspectiva`.
+
+**Función de evaluación** (`_utilidad`, línea 46):
+1. **Nodos terminales:** `reglas.ganador` distinto de `None` → $+100000$ si gana la perspectiva, $-100000$ en caso contrario (dominan cualquier valor heurístico).
+2. **Material:** $35 \cdot (|\text{propios}| - |\text{enemigos}|)$.
+3. **Recurso en juego (portador no nulo):** $\pm(180 - 8 \cdot d(\text{portador}, \text{base}))$ con signo según el bando del portador, más un bono/penalización de $\max(0, 5 - d_{\text{rival}}) \cdot 12$ por presión cercana sobre el portador.
+4. **Recurso en el suelo:** $5 \cdot (d_{\text{rival al recurso}} - d_{\text{propio al recurso}})$ (premia acercar a las unidades propias).
+
+**Órdenes de acción** (`_acciones_ordenadas`, línea 79): `estandar` = orden de `Reglas.acciones_legales`; `inverso` = su reversa; `heuristico` = evalúa una vez la utilidad de cada sucesor y ordena de mejor a peor para la perspectiva (desempate por `_clave_accion`). El orden **no cambia el valor óptimo**, solo el esfuerzo.
+
+**Poda alfa-beta:** en la línea 123 se comprueba `alpha >= beta`; al podar se acumula `podados += len(acciones) - i - 1` (acciones hermanas no visitadas) y se corta con `break`. Con `con_poda=False` (Minimax puro) `nodos_podados` queda en `0`.
+
+**Validación de entrada** (líneas 93–96): `profundidad_maxima` debe ser `int ≥ 1` y `orden_acciones` debe pertenecer a `("estandar", "inverso", "heuristico")`; en otro caso se lanza `ValueError`.
+
+**Complejidad:** Minimax $O(b^d)$ en tiempo y $O(d)$ en espacio (recursión); alfa-beta $O(b^d)$ en el peor caso y hasta $O(b^{d/2})$ con orden ideal.
+
+Equivalencia empírica comprobada por `tests/test_minimax.py::test_caso8_minimax_y_alfa_beta_equivalentes`: mismo valor y misma acción con profundidad 3, con reducción del esfuerzo (p. ej. Caso 8: de 3 255 a 543 nodos evaluados y 600 nodos podados; véase §13.8).
+
+---
+
+### 8.8 `escenario/mapa.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -822,14 +941,14 @@ En el experimento cuantitativo del **Caso 4** (`caso4_comparacion_heuristicas.js
 | `Mapa.costo_minimo()` | 44 | Mínimo costo entre terrenos transitables | Implementado |
 | `Mapa.vecinos(f, c)` | 53 | Lista de `(nombre_dir, f2, c2)` transitables en el orden de `DIRECCIONES` | Implementado |
 
-### 8.7 `escenario/modelos.py`
+### 8.9 `escenario/modelos.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
 | `Escenario` | 10 | Datos validados del escenario | Implementado |
 | `Escenario.estado_inicial()` | 20 | Construye `Estado`; si hay portador, `recurso_pos = None`; ordena unidades por `id` | Implementado |
 
-### 8.8 `escenario/cargador.py`
+### 8.10 `escenario/cargador.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -839,7 +958,7 @@ En el experimento cuantitativo del **Caso 4** (`caso4_comparacion_heuristicas.js
 | `construir_escenario(datos)` | 19 | Valida y convierte el dict en `Escenario` | Implementado |
 | `cargar_escenario(ruta)` | 49 | Lee JSON y delega en `construir_escenario` | Implementado |
 
-### 8.9 `escenario/validador.py`
+### 8.11 `escenario/validador.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -850,7 +969,7 @@ En el experimento cuantitativo del **Caso 4** (`caso4_comparacion_heuristicas.js
 
 Comportamiento verificado: si la raíz no es `dict` o faltan claves obligatorias, retorna de inmediato. En caso contrario acumula todos los errores detectados. La función auxiliar interna `transitable(p)` devuelve `True` ante `KeyError`/`IndexError`/`TypeError` para no duplicar errores ya reportados.
 
-### 8.10 `juego/estado.py`
+### 8.12 `juego/estado.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -863,7 +982,7 @@ Comportamiento verificado: si la raíz no es `dict` o faltan claves obligatorias
 
 `Estado.posicion_recurso()` no se invoca desde los módulos revisados (solo se define). No se encontró uso en `app.py`, `reglas.py`, `tablero.py` ni en las pruebas.
 
-### 8.11 `juego/reglas.py`
+### 8.13 `juego/reglas.py`
 
 Reglas declaradas en el docstring del módulo: R1–R7 (una unidad por turno; no compartir celda salvo interceptación; recogida automática; interceptación del portador enemigo; victoria por base propia o por dejar al rival sin unidades; costo de movimiento = costo del terreno destino, esperar cuesta 0; siempre existe ESPERAR).
 
@@ -893,7 +1012,7 @@ Detalles verificables de `aplicar`:
 
 Condiciones previas declaradas: `accion in acciones_legales(estado)`. Si se violan, el uso de `next(...)` sin valor por defecto puede producir `StopIteration` al buscar la unidad.
 
-### 8.12 `juego/problema_navegacion.py`
+### 8.14 `juego/problema_navegacion.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -909,7 +1028,7 @@ Ejemplo real de `sucesores` (código íntegro):
 return [(n, (f, c), self.mapa.costo(f, c)) for n, f, c in self.mapa.vecinos(*s)]
 ```
 
-### 8.13 `verificacion/verificador.py`
+### 8.15 `verificacion/verificador.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -924,94 +1043,106 @@ Comprobaciones realizadas (seis):
 5. El costo reportado coincide con la suma de costos de las transiciones (tolerancia `1e-9`).
 6. La última celda es el objetivo.
 
-### 8.14 `interfaz/app.py`
+### 8.16 `interfaz/app.py`
 
 Constantes del módulo:
 
-| Constante | Valor | Uso |
-|---|---|---|
-| `TAREAS` | `{"Búsqueda de ruta": "busqueda", "Partida por turnos": "partida", "Decisión adversarial": "adversarial"}` | Mapeo nombre visible → clave interna |
-| `MODO_A_TAREA` | Inverso de `TAREAS` | Mapeo clave → nombre visible |
-| `METRICAS` | Seis métricas | Opciones de los desplegables de métricas |
-| `HEURISTICAS` | `("manhattan", "propia")` | Heurísticas de A* |
-| `MAX_JUGADAS_AUTO` | `300` | Tope de jugadas del auto-juego |
-| `EJEMPLO` | Ruta a `escenarios/ejemplo.json` | Escenario de ejemplo |
+| Constante | Línea | Valor | Uso |
+|---|---|---|---|
+| `TAREAS` | 21 | `{"Búsqueda de ruta": "busqueda", "Partida por turnos": "partida", "Decisión adversarial": "adversarial"}` | Mapeo nombre visible → clave interna |
+| `MODO_A_TAREA` | 22 | Inverso de `TAREAS` | Mapeo clave → nombre visible |
+| `METRICAS` | 23 | Seis métricas de búsqueda | Opciones de los desplegables de métricas en tareas de búsqueda |
+| `METRICAS_ADV` | 26 | Nodos evaluados/generados/podados, valor y profundidad | Desplegables de métricas en la tarea adversarial |
+| `HEURISTICAS` | 32 | `("manhattan", "propia")` | Heurísticas ofrecidas en la interfaz (euclidiana existe en `a_estrella.py` pero no se expone) |
+| `MAX_JUGADAS_AUTO` | 33 | `300` | Tope de jugadas del auto-juego |
+| `EJEMPLO` | 34 | Ruta a `escenarios/ejemplo.json` | Escenario de ejemplo |
 
-Función de módulo:
+Funciones de módulo:
 
 | Elemento | Línea | Responsabilidad |
 |---|---|---|
-| `fmt(v)` | 30 | Formatea `None` como `—`, booleanos como `Sí`/`No`, flotantes redondeados a 3 decimales |
+| `fmt(v)` | 37 | Formatea `None` como `—`, booleanos como `Sí`/`No`, flotantes redondeados a 3 decimales |
+| `_desc_accion(a)` | 47 | Descripción legible de una acción (`MOVER (fila,col)`, `RECOGER`, `ESPERAR`, `INTERCEPTAR`) |
 
-Clase `App(tk.Tk)`:
+Clase `App(tk.Tk)` (declarada en la línea 54):
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
-| `__init__` | 41 | Inicializa atributos, tema, construcción de UI, frame de tarea y estado | Implementado |
-| `_tema` | 59 | Configura estilos `ttk` (tema oscuro) | Implementado |
-| `_texto` | 145 | Crea caja de texto con etiquetas de color | Implementado |
-| `_construir` | 157 | Barra superior, panel dividido, tablero y pestañas | Implementado |
-| `_tab_control` | 215 | Pestaña Control con misión y formularios | Implementado |
-| `_f_busqueda` | 240 | Formulario de búsqueda (algoritmo, unidad, objetivo, heurística, `k`, opciones) | Implementado |
-| `_f_partida` | 291 | Formulario de partida (control por bando, botones) | Implementado |
-| `_f_adversarial` | 321 | Formulario adversarial (algoritmo, profundidad) | Parcial |
-| `_tab_resultados` | 340 | Tabla de métricas y texto de resultados | Implementado |
-| `_tab_estadisticas` | 352 | Resumen, historial, gráfico, comparación de heurísticas | Implementado |
-| `_tab_comparacion` | 398 | Comparación de algoritmos, selector de heurística de A* | Implementado |
-| `_tab_escenario` | 426 | Resumen del escenario y log | Implementado |
-| `_poner_estado` | 436 | Escribe la barra de estado | Implementado |
-| `log` | 439 | Agrega línea al log | Implementado |
-| `_tarea` | 443 | Clave interna de la tarea seleccionada | Implementado |
-| `_modo_json` | 446 | `True` si el modo es JSON | Implementado |
-| `_es_astar` | 449 | `True` si el algoritmo seleccionado normaliza a `A_ESTRELLA` | Implementado |
-| `_actualizar_visibles` | 452 | Muestra heurística y comparación solo con A*; `k` solo con Beam Search | Implementado |
-| `cargar_dialogo` | 469 | Diálogo de selección de JSON | Implementado |
-| `cargar_ruta` | 475 | Carga validando primero; conserva el escenario anterior ante error | Implementado |
-| `_mostrar_errores` | 488 | Muestra errores de validación | Implementado |
-| `_aplicar_escenario` | 496 | Crea `Reglas`, estado, ajusta controles, limpia y redibuja | Implementado |
-| `_resumen_escenario` | 519 | Texto con detalles del escenario | Implementado |
-| `_dibujar_leyenda` | 533 | Leyenda de terrenos y símbolos | Implementado |
-| `cambiar_modo` | 562 | Aplica modo JSON/exploración, bloqueo y ejecución automática | Implementado |
-| `_aplicar_prueba` | 578 | Lee `prueba` y ajusta controles | Implementado |
-| `_bloquear` | 607 | Habilita/deshabilita controles | Implementado |
-| `_elegir_tarea` | 615 | Cambia la tarea activa | Implementado |
-| `_cambio_tarea` | 622 | Redibuja tras cambio de tarea | Implementado |
-| `_mostrar_frame_tarea` | 626 | Muestra el formulario de la tarea activa | Implementado |
-| `_cambio_parametros` | 633 | Limpia capas y redibuja ante cambios de parámetros | Implementado |
-| `_inicio_busqueda` | 639 | Posición de la unidad de inicio | Implementado |
-| `_objetivo_busqueda` | 645 | Objetivo si está dentro del mapa | Implementado |
-| `refrescar_tablero` | 652 | Compone capas y actualiza tablero, turno y costos | Implementado |
-| `_limpiar_vista` | 678 | Limpia capas visuales | Implementado |
-| `_hover_celda` | 682 | Información de la celda bajo el cursor | Implementado |
-| `clic_tablero` | 707 | Despacha clics según tarea | Implementado |
-| `_es_humano` | 727 | Indica si el bando es humano | Implementado |
-| `_clic_partida` | 730 | Selección de unidad y movimiento en partida | Implementado |
-| `_reiniciar_partida` | 751 | Restaura el estado inicial y contadores | Implementado |
-| `_aplicar_accion` | 760 | Aplica una acción, acumula costo, registra y comprueba victoria | Implementado |
-| `esperar` | 779 | Acción ESPERAR para la unidad seleccionada | Implementado |
-| `turno_ia` | 788 | Elige una acción aleatoria para el bando no humano | Parcial (controlador aleatorio) |
-| `auto_jugar` | 796 | Alterna el auto-juego | Implementado |
-| `_auto_tick` | 804 | Avanza el auto-juego cada 250 ms, con tope de 300 jugadas | Implementado |
-| `ejecutar` | 823 | Despacha según tarea | Implementado |
-| `_problema` | 844 | Construye y valida `ProblemaNavegacion` | Implementado |
-| `_parametros` | 863 | Devuelve `{"k": int, "heuristica": str}` | Implementado |
-| `_correr` | 870 | Ejecuta, verifica, agrega al historial y devuelve `(res, checks)` | Implementado |
-| `_ejecutar_busqueda` | 882 | Ejecuta búsqueda, muestra resultados; si es A*, compara heurísticas | Implementado |
-| `comparar_todos` | 902 | Ejecuta todos los algoritmos registrados | Implementado |
-| `verificar` | 919 | Re-verifica la última ejecución | Implementado |
-| `_ejecutar_adversarial` | 933 | Lista acciones legales; no calcula Minimax | Pendiente (solo listado) |
-| `_limpiar_resultados` | 944 | Limpia resultados, comparación e historial de heurísticas | Implementado |
-| `_mostrar_resultado` | 955 | Rellena métricas, camino, verificación y JSON | Implementado |
-| `_mostrar_comparacion` | 979 | Rellena tabla de comparación y resumen | Implementado |
-| `_seleccion_comparacion` | 1002 | Muestra el camino del algoritmo seleccionado en el tablero | Implementado |
-| `_graficar_comparacion` | 1011 | Gráfico de barras por algoritmo | Implementado |
-| `_refrescar_estadisticas` | 1017 | Historial, resumen y gráfico | Implementado |
-| `_agrupar` | 1034 | Agrupa historial por algoritmo | Implementado |
-| `_graficar_estadisticas` | 1040 | Barras por heurística si A* está activo; si no, promedio por algoritmo | Implementado |
-| `_comparar_heuristicas` | 1053 | Ejecuta A* con cada heurística y guarda resultados | Implementado |
-| `_refrescar_comparacion_heur` | 1064 | Rellena tabla de heurísticas y redibuja | Implementado |
-| `exportar_csv` | 1078 | Exporta el historial a CSV | Implementado |
-| `borrar_historial` | 1091 | Vacía historial y comparación de heurísticas | Implementado |
+| `__init__` | 55 | Inicializa atributos, tema, construcción de UI, frame de tarea y estado | Implementado |
+| `_tema` | 73 | Configura estilos `ttk` (tema oscuro) | Implementado |
+| `_texto` | 159 | Crea caja de texto con etiquetas de color | Implementado |
+| `_construir` | 171 | Barra superior, panel dividido, tablero y pestañas | Implementado |
+| `_tab_control` | 229 | Pestaña Control con misión y formularios | Implementado |
+| `_f_busqueda` | 254 | Formulario de búsqueda (algoritmo, unidad, objetivo, heurística, `k`, opciones) | Implementado |
+| `_f_partida` | 305 | Formulario de partida: control por bando (`Humano`, `Alfa-Beta`, `Minimax`, `Azar (provisional)`) y botones | Implementado |
+| `_f_adversarial` | 335 | Formulario adversarial: algoritmo, profundidad 1–8, orden de acciones y botones «Evaluar estado»/«Evaluar y jugar» | Implementado |
+| `_tab_resultados` | 361 | Tabla de métricas y texto de resultados | Implementado |
+| `_tab_estadisticas` | 373 | Resumen, historial, gráfico, comparación de heurísticas | Implementado |
+| `_tab_comparacion` | 420 | Comparación de algoritmos (o de `MINIMAX` vs `ALFA_BETA`), selector de heurística de A* | Implementado |
+| `_tab_escenario` | 449 | Resumen del escenario y log | Implementado |
+| `_poner_estado` | 459 | Escribe la barra de estado | Implementado |
+| `log` | 462 | Agrega línea al log | Implementado |
+| `_tarea` | 466 | Clave interna de la tarea seleccionada | Implementado |
+| `_modo_json` | 469 | `True` si el modo es JSON | Implementado |
+| `_es_astar` | 472 | `True` si el algoritmo seleccionado normaliza a `A_ESTRELLA` | Implementado |
+| `_es_adversarial` | 475 | `True` si la tarea activa es `adversarial` | Implementado |
+| `_metricas_activas` | 481 | Conjunto de métricas habilitadas (`METRICAS` o `METRICAS_ADV` según tarea) | Implementado |
+| `_sincronizar_metricas` | 484 | Reajusta los desplegables de métricas al cambiar de tarea | Implementado |
+| `_actualizar_visibles` | 495 | Muestra heurística/comparación solo con A*, `k` solo con Beam Search y las métricas adversariales en su tarea | Implementado |
+| `cargar_dialogo` | 512 | Diálogo de selección de JSON | Implementado |
+| `cargar_ruta` | 518 | Carga validando primero; conserva el escenario anterior ante error | Implementado |
+| `_mostrar_errores` | 531 | Muestra errores de validación | Implementado |
+| `_aplicar_escenario` | 539 | Crea `Reglas`, estado, ajusta controles, limpia y redibuja | Implementado |
+| `_resumen_escenario` | 563 | Texto con detalles del escenario | Implementado |
+| `_dibujar_leyenda` | 577 | Leyenda de terrenos y símbolos | Implementado |
+| `cambiar_modo` | 606 | Aplica modo JSON/exploración, bloqueo y ejecución automática | Implementado |
+| `_aplicar_prueba` | 622 | Lee `prueba` y ajusta controles | Implementado |
+| `_bloquear` | 651 | Habilita/deshabilita controles | Implementado |
+| `_elegir_tarea` | 659 | Cambia la tarea activa | Implementado |
+| `_cambio_tarea` | 666 | Redibuja tras cambio de tarea | Implementado |
+| `_mostrar_frame_tarea` | 672 | Muestra el formulario de la tarea activa | Implementado |
+| `_cambio_parametros` | 679 | Limpia capas y redibuja ante cambios de parámetros | Implementado |
+| `_inicio_busqueda` | 685 | Posición de la unidad de inicio | Implementado |
+| `_objetivo_busqueda` | 691 | Objetivo si está dentro del mapa | Implementado |
+| `refrescar_tablero` | 698 | Compone capas y actualiza tablero, turno y costos | Implementado |
+| `_limpiar_vista` | 728 | Limpia capas visuales | Implementado |
+| `_hover_celda` | 732 | Información de la celda bajo el cursor | Implementado |
+| `clic_tablero` | 757 | Despacha clics según tarea | Implementado |
+| `_es_humano` | 777 | Indica si el bando es humano | Implementado |
+| `_clic_partida` | 780 | Selección de unidad y movimiento en partida | Implementado |
+| `_reiniciar_partida` | 801 | Restaura el estado inicial y contadores | Implementado |
+| `_aplicar_accion` | 810 | Aplica una acción, acumula costo, registra y comprueba victoria | Implementado |
+| `esperar` | 829 | Acción ESPERAR para la unidad seleccionada | Implementado |
+| `turno_ia` | 838 | Elige la acción del bando en turno: `Alfa-Beta` (orden `heuristico`), `Minimax` (orden por defecto) o aleatoria (`Azar`); usa `var_prof` y ante `None` recurre a `rng.choice` | Implementado |
+| `auto_jugar` | 865 | Alterna el auto-juego | Implementado |
+| `_auto_tick` | 873 | Avanza el auto-juego cada 250 ms, con tope de 300 jugadas; se detiene en estado terminal o ante turno humano | Implementado |
+| `ejecutar` | 892 | Despacha según tarea | Implementado |
+| `_problema` | 913 | Construye y valida `ProblemaNavegacion` | Implementado |
+| `_parametros` | 932 | Devuelve `{"k": int, "heuristica": str}` | Implementado |
+| `_correr` | 939 | Ejecuta, verifica, agrega al historial y devuelve `(res, checks)` | Implementado |
+| `_ejecutar_busqueda` | 951 | Ejecuta búsqueda, muestra resultados; si es A*, compara heurísticas | Implementado |
+| `comparar_todos` | 971 | Ejecuta todos los algoritmos de búsqueda registrados; en tarea adversarial deriva a `comparar_adversariales` | Implementado |
+| `comparar_adversariales` | 991 | Corre `MINIMAX` y `ALFA_BETA` con el mismo orden sobre el estado actual y cambia a la pestaña Comparación | Implementado |
+| `_mostrar_comparacion_adversarial` | 1009 | Rellena la tabla adversarial, resume acción/valor/evaluaciones y selecciona la primera fila | Implementado |
+| `_encabezados_cmp` | 1027 | Alterna los encabezados de la tabla de comparación (búsqueda / adversarial) | Implementado |
+| `verificar` | 1032 | Re-verifica la última ejecución | Implementado |
+| `_correr_adversarial` | 1046 | Invoca `minimax`/`alfa_beta` con profundidad y orden de la UI, registra la corrida en el historial y devuelve `ResultadoAdversarial` | Implementado |
+| `_resaltar_accion` | 1074 | Marca la unidad que mueve y la celda destino de la acción recomendada | Implementado |
+| `_ejecutar_adversarial` | 1083 | «Evaluar estado»: corre el algoritmo, muestra métricas y resalta la acción sin aplicarla (rechaza estados terminales) | Implementado |
+| `_evaluar_y_aplicar_adversarial` | 1104 | «Evaluar y jugar»: corre el algoritmo y aplica la acción recomendada vía `_aplicar_accion` | Implementado |
+| `_mostrar_resultado_adversarial` | 1117 | Rellena la tabla de resultados (10 filas), el texto libre y el JSON de `ResultadoAdversarial` | Implementado |
+| `_limpiar_resultados` | 1146 | Limpia resultados, comparación e historial de heurísticas | Implementado |
+| `_mostrar_resultado` | 1158 | Rellena métricas, camino, verificación y JSON | Implementado |
+| `_mostrar_comparacion` | 1182 | Rellena tabla de comparación y resumen | Implementado |
+| `_seleccion_comparacion` | 1206 | Muestra el camino/acción del elemento seleccionado en el tablero | Implementado |
+| `_graficar_comparacion` | 1219 | Gráfico de barras por algoritmo | Implementado |
+| `_refrescar_estadisticas` | 1227 | Historial, resumen y gráfico | Implementado |
+| `_agrupar` | 1249 | Agrupa historial por algoritmo | Implementado |
+| `_graficar_estadisticas` | 1255 | Barras por heurística si A* está activo; si no, promedio por algoritmo | Implementado |
+| `_comparar_heuristicas` | 1272 | Ejecuta A* con cada heurística y guarda resultados | Implementado |
+| `_refrescar_comparacion_heur` | 1283 | Rellena tabla de heurísticas y redibuja | Implementado |
+| `exportar_csv` | 1297 | Exporta el historial a CSV | Implementado |
+| `borrar_historial` | 1315 | Vacía historial y comparación de heurísticas | Implementado |
 
 Comportamientos verificables de la interfaz:
 
@@ -1020,8 +1151,12 @@ Comportamientos verificables de la interfaz:
 - Al ejecutar A* se comparan ambas heurísticas: se reutiliza el resultado de la heurística seleccionada y se ejecuta A* con la otra.
 - La pestaña Comparación conserva la ejecución de todos los algoritmos y permite elegir la heurística usada por A* (`var_heur_cmp`).
 - Cada llamada a `_correr` agrega una entrada al historial; por tanto, una ejecución de A* con comparación de heurísticas agrega una entrada por cada heurística ejecutada (la seleccionada se reutiliza, la otra se ejecuta y registra).
+- En la tarea **Decisión adversarial**, el botón «Comparar» llama a `comparar_adversariales()`, que solo corre `MINIMAX` y `ALFA_BETA` con el mismo `orden_acciones` y reetiqueta las columnas de la tabla vía `_encabezados_cmp(adv=True)`.
+- Las corridas adversariales se registran en el mismo historial que las de búsqueda, reutilizando `estados_generados/estados_expandidos` para `nodos_generados/nodos_evaluados` y añadiendo los campos `valor`, `nodos_podados`, `profundidad` y `orden` dentro de `parametros` (JSON).
+- Ambos botones de evaluación rechazan el estado si `Reglas.es_terminal` devuelve `True` (mensaje «Fin de partida»).
+- Si `minimax`/`alfa_beta` devuelven `accion = None`, `turno_ia` cae en una acción aleatoria legal; «Evaluar estado» solo informa «no se propuso ninguna acción».
 
-### 8.15 `interfaz/tablero.py`
+### 8.17 `interfaz/tablero.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
@@ -1041,23 +1176,33 @@ Comportamientos verificables de la interfaz:
 
 Capas aceptadas por `mostrar`: `camino`, `explorados`, `inicio`, `objetivo`, `seleccion`, `destinos`, `turno_marcador`.
 
-### 8.16 `interfaz/graficas.py`
+### 8.18 `interfaz/graficas.py`
 
 | Elemento | Línea | Responsabilidad | Estado |
 |---|---|---|---|
 | `_fmt`, `_rect` | 8, 12 | Utilidades de formato y rectángulos | Implementado |
 | `barras(canvas, datos, titulo="")` | 18 | Dibuja barras y rejilla; ignora valores `None`; si el canvas es menor a 40×60 no dibuja | Implementado |
 
-### 8.17 `experimentos/`
+### 8.19 `experimentos/`
 
 | Archivo / elemento | Responsabilidad | Estado |
 |---|---|---|
 | `generar_casos_minimos.py` | Genera `caso01`, `caso05`, `caso06a`, `caso06b` en `escenarios/casos_minimos` | Implementado |
 | `generar_casos_minimos.matriz`, `poner`, `rect`, `unidad`, `escenario`, `guardar` | Utilidades de construcción | Implementado |
 | `generar_casos_minimos.caso1`, `caso5`, `caso6` | Definición de los casos | Implementado |
+| `generar_casos_robustez.py` | Genera `caso02`, los escenarios `robustez/r01–r10` y los `invalidos/inv01–inv12` con semillas fijas | Implementado |
 | `caso06_estado_compuesto.py` | Imprime comparación de estados de los casos 6a y 6b | Implementado |
+| `ejecutar_experimentos_busqueda.py` | Ejecuta los casos mínimos 1–5, los robustos `R01–R08` y los adversariales 7–10; escribe `documentacion/resultados_experimentos_busqueda.md` | Implementado |
+| `ejecutar_experimentos_busqueda.ejecutar_caso` | Corre un caso de navegación, rechaza objetivos no transitables (`Verif. = —`) | Implementado |
+| `ejecutar_experimentos_busqueda.ejecutar_caso_adversarial` | 5 iteraciones por configuración; promedia tiempo y reporta nodos | Implementado |
+| `ejecutar_experimentos_busqueda.CASOS_ROBUSTOS`, `CASOS_ADVERSARIALES` | Cataloga los 8 escenarios robustos y los 4 adversariales (profundidad y `orden_acciones`) | Implementado |
+| `ejecutar_casos_adversariales.py` | Reporte por consola de los casos 7, 8, 9 y 10 (comparación MM/AB, órdenes y profundidades) | Implementado |
+| `ejecutar_casos.py` | Tabla «esperado vs. obtenido» a partir de `esperados.json` | **No ejecutable**: importa `algoritmos.adversarial` y `verificacion.verificador_adversarial`, que no existen |
+| `esperados.json` | Especificación previa de C01–C10, R01–R10 y V01–V12 | Implementado (su clave `orden` no coincide con `orden_acciones` de `minimax.py`) |
 
-Observación verificable: `generar_casos_minimos.py` escribe en `escenarios/casos_minimos` (guion bajo), mientras que la carpeta versionada es `escenarios/casos minimos` (espacio). Ejecutar el generador crearía/actualizaría una carpeta distinta de la usada por las pruebas y los escenarios existentes.
+Observaciones verificables:
+- `generar_casos_minimos.py` escribe en `escenarios/casos_minimos` (guion bajo), mientras que la carpeta versionada es `escenarios/casos minimos` (espacio); `generar_casos_robustez.py` escribe en `robustez`/`invalidos` frente a las carpetas versionadas `casos_robustos`/`casos_invalidos`. Ejecutar esos generadores crearía carpetas distintas de las usadas por las pruebas y los escenarios existentes.
+- `ejecutar_experimentos_busqueda.py` sí apunta a `escenarios/casos minimos` y por eso es el generador oficial de resultados.
 
 ---
 
@@ -1093,8 +1238,13 @@ Solo se documentan datos verificables en el código. Las anotaciones de tipo son
 | `dfs(problema, **params)` | `problema` | `ResultadoBusqueda` | Ídem | Ninguno |
 | `ucs(problema, **params)` | `problema` | `ResultadoBusqueda` | Ídem | Ninguno |
 | `a_estrella(problema, **params)` | `problema`; `params["heuristica"]` opcional (`"manhattan"` por defecto) | `ResultadoBusqueda` | Ídem | Ninguno |
+| `beam_search(problema, **params)` | `problema`; `params["k"]` (por defecto `2`, forzado a `≥ 1`); `params["heuristica"]` (por defecto `"manhattan"`) | `ResultadoBusqueda` (`camino=[]` si no hay ruta) | Las de la interfaz del problema; `ValueError`/`TypeError` internos al convertir `k` se neutralizan con valores por defecto | Ninguno |
+| `minimax(estado, reglas, escenario, profundidad_maxima=3, orden_acciones="estandar")` | `estado`: `Estado`; `reglas`: `Reglas`; `escenario`: `Escenario`; profundidad entera `≥ 1`; orden en `("estandar","inverso","heuristico")` | `ResultadoAdversarial` | `ValueError` si la profundidad o el orden no son válidos; `AttributeError` si `reglas`/`escenario` no exponen los métodos esperados | Mide tiempo con `perf_counter`; no muta estado, reglas ni escenario (sí crea estados sucesores en memoria) |
+| `alfa_beta(estado, reglas, escenario, profundidad_maxima=3, orden_acciones="estandar")` | Ídem `minimax` | `ResultadoAdversarial` (`algoritmo="ALFA_BETA"`, `nodos_podados` > 0) | Ídem | Ídem |
+| `ResultadoAdversarial.a_dict()` | — | `dict` serializable | `AttributeError` si `accion` no tiene `unidad_id`/`tipo`/`destino` (salvo `None`) | Ninguno |
 | `h_manhattan(s, problema)` | `s`: celda; `problema` | número | `mapa` debe exponer `costo_minimo()` | Ninguno |
 | `h_propia(s, problema)` | `s`: celda; `problema` | número | `mapa` debe exponer `costo_minimo()` y `costo()` | Ninguno |
+| `h_euclidiana(s, problema)` | `s`: celda; `problema` | número | `mapa` debe exponer `costo_minimo()` | Ninguno (no está en el desplegable de la interfaz) |
 | `obtener_heuristica(nombre)` | `nombre`: cualquier valor convertible a cadena | función de heurística | No | Ninguno |
 | `reconstruir_camino(padre, meta)` | `padre`: dict; `meta`: estado | `(list, número)` | `KeyError` si `padre` es inconsistente (precondición) | Ninguno |
 
@@ -1125,7 +1275,11 @@ Solo se documentan datos verificables en el código. Las anotaciones de tipo son
 | `App()` | — | Abre ventana; crea widgets y atributos de estado |
 | `App.cargar_ruta(ruta)` | ruta de archivo | Carga escenario o muestra errores; actualiza controles, leyenda y log; puede ejecutar automáticamente |
 | `App.ejecutar()` | estado de la UI | Ejecuta búsqueda, partida o adversarial; puede mostrar diálogos |
-| `App.comparar_todos()` | escenario y objetivo actuales | Ejecuta todos los algoritmos; agrega entradas al historial; muestra comparación |
+| `App.comparar_todos()` | escenario y objetivo actuales | Ejecuta todos los algoritmos de búsqueda; en tarea adversarial ejecuta `comparar_adversariales`; agrega entradas al historial y muestra comparación |
+| `App.comparar_adversariales()` | estado actual y `orden_acciones` | Ejecuta `MINIMAX` y `ALFA_BETA`, agrega dos entradas al historial y abre la pestaña Comparación |
+| `App._ejecutar_adversarial()` | estado actual, algoritmo, profundidad y orden de la UI | Evalúa sin aplicar; rechaza estados terminales; resalta la acción recomendada |
+| `App._evaluar_y_aplicar_adversarial()` | ídem | Evalúa y aplica la acción vía `_aplicar_accion`; puede avanzar el turno |
+| `App.turno_ia()` | control del bando y estado | Elige y aplica una acción (Alfa-Beta, Minimax o aleatoria) |
 | `App.exportar_csv()` | historial en memoria | Abre diálogo de guardado; escribe el CSV en la ruta elegida con las claves del primer registro del historial |
 | `App.borrar_historial()` | — | Vacía historial, comparación de heurísticas y refresca vistas |
 
@@ -1163,7 +1317,7 @@ Desde la raíz del repositorio:
 python3 main.py
 ```
 
-En el entorno Windows de elaboración se verificó que el intérprete disponible responde a `python` (versión 3.12.0). La forma equivalente es:
+En el entorno Windows de elaboración se verificó que el intérprete disponible responde a `python` (3.12.0 en la versión inicial del manual; **3.14.0 en la re-ejecución del 2026-10-20**). La forma equivalente es:
 
 ```bash
 python main.py
@@ -1199,7 +1353,25 @@ python3 experimentos/caso06_estado_compuesto.py
 
 Este script imprime por consola posiciones, igualdad/hash de estados, portador, recurso y acciones legales de los casos 6a y 6b.
 
-### 10.8 Modos de la interfaz
+### 10.8 Experimentos (reporte de resultados)
+
+```bash
+python experimentos/ejecutar_experimentos_busqueda.py
+python experimentos/ejecutar_casos_adversariales.py
+python experimentos/generar_casos_robustez.py
+```
+
+- `ejecutar_experimentos_busqueda.py` (el oficial): corre los casos mínimos 1–5, los robustos `R01–R08` y los adversariales 7–10, y reescribe `documentacion/resultados_experimentos_busqueda.md` con las tres secciones. Los adversariales se repiten 5 veces y reportan tiempo promedio.
+- `ejecutar_casos_adversariales.py`: reporte detallado por consola de los casos 7–10 (acciones, valor, nodos generados/evaluados/podados y tiempo por configuración).
+- `generar_casos_robustez.py`: regenera escenarios con semillas fijas; escribe en carpetas con nombres distintos a las versionadas (véase §8.19).
+
+```bash
+python experimentos/ejecutar_casos.py
+```
+
+**No ejecutable:** falla con `ModuleNotFoundError: No module named 'algoritmos.adversarial'` (y `verificacion.verificador_adversarial`), módulos que no existen en el repositorio. Véase [15.2](#152-deuda-técnica-y-limitaciones-verificables).
+
+### 10.9 Modos de la interfaz
 
 | Modo | Comportamiento verificado |
 |---|---|
@@ -1218,7 +1390,7 @@ Se ejecutó la suite completa durante la elaboración con:
 python -m unittest discover -s tests -v
 ```
 
-**Resultado obtenido: 17 pruebas ejecutadas, 17 correctas (`OK`), en 0.029 s, con Python 3.12.0.**
+**Resultado obtenido: 25 pruebas ejecutadas, 25 correctas (`OK`), en 0.153 s, con Python 3.14.0 (re-ejecución del 2026-10-20; la versión inicial del manual reportaba 17 pruebas en 0.029 s con Python 3.12.0).**
 
 | Archivo | Clase | Prueba | Qué comprueba (según el código) | Resultado observado |
 |---|---|---|---|---|
@@ -1230,6 +1402,7 @@ python -m unittest discover -s tests -v
 | `tests/test_paso1_2.py` | `TestJuego` | `test_hashable_e_inmutable` | `Estado` igual y hashable | OK |
 | `tests/test_paso1_2.py` | `TestJuego` | `test_acciones_y_sucesor` | Acciones del bando en turno y alternancia de turno | OK |
 | `tests/test_paso1_2.py` | `TestJuego` | `test_estado_compuesto` | Misma posición de unidad, estados distintos según portador | OK |
+| `tests/test_paso1_2.py` | `TestJuego` | `test_unidad_que_empieza_sobre_el_recurso_lo_recoge` | Al inicio, la unidad sobre el recurso queda como portadora | OK |
 | `tests/test_paso1_2.py` | `TestJuego` | `test_recoger_recurso` | Recogida automática al pisar el recurso | OK |
 | `tests/test_paso1_2.py` | `TestJuego` | `test_victoria` | Victoria al portador en base propia | OK |
 | `tests/test_paso1_2.py` | `TestJuego` | `test_interceptar` | Interceptación del portador enemigo | OK |
@@ -1239,8 +1412,17 @@ python -m unittest discover -s tests -v
 | `tests/test_paso4_a_estrella.py` | `TestAEstrella` | `test_admisibilidad_heuristicas` | Heurísticas `0` en meta y `h_propia >= h_manhattan` en inicio | OK |
 | `tests/test_paso4_a_estrella.py` | `TestAEstrella` | `test_caso3_obstaculo_y_heuristica` | Camino verificado y rodeo del muro | OK |
 | `tests/test_paso4_a_estrella.py` | `TestAEstrella` | `test_caso4_comparacion_heuristicas` | Mismo costo óptimo; `propia` expande menos que `manhattan` | OK |
+| `tests/test_beam_search.py` | `TestBeamSearch` | `test_k_1_2_4_8_devuelven_camino_valido_en_caso5` | `k=1,2` → sin solución (`exito=False`, `camino=[]`); `k=4,8` → ruta verificada; siempre `maximo_frontera ≤ k` | OK |
+| `tests/test_beam_search.py` | `TestBeamSearch` | `test_sin_solucion_termina_sin_camino` | Barrera de muros 3×3: termina sin excepción y sin camino | OK |
+| `tests/test_minimax.py` | `TestBusquedaAdversarial` | `test_caso7_intercepta_portador_adyacente` | Alfa-Beta (prof 3) elige `A1 → (8,9)`; el sucesor elimina a `B1` y `A1` pasa a ser portadora | OK |
+| `tests/test_minimax.py` | `TestBusquedaAdversarial` | `test_caso8_minimax_y_alfa_beta_equivalentes` | Misma acción y mismo valor; alfa-beta evalúa menos nodos que minimax | OK |
+| `tests/test_minimax.py` | `TestBusquedaAdversarial` | `test_caso9_orden_cambia_trabajo_no_valor` | Los tres órdenes dan el mismo valor (dif. < 1e-9), acción no nula y nodos evaluados > 0 | OK |
+| `tests/test_minimax.py` | `TestBusquedaAdversarial` | `test_caso10_profundidades_1_a_4_limitan_busqueda` | Profundidades 1–4 respetadas, acción y métricas no vacías | OK |
+| `tests/test_minimax.py` | `TestBusquedaAdversarial` | `test_rechaza_profundidad_invalida` | Profundidades `0`, `-1` y `1.5` lanzan `ValueError` | OK |
 
 Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la admisibilidad global de las heurísticas; comprueba los valores en la meta y una relación de orden en el inicio, según el código de la prueba.
+
+Nota de alineación: `test_k_1_2_4_8_devuelven_camino_valido_en_caso5` fue corregida el 2026-10-20 para reflejar el comportamiento **medido** de `caso05_beam_search.json` (haz estrecho atrapado en la copa: `k=1,2` sin solución; `k=4,8` con ruta verificable). En la versión anterior del manual y de la prueba se esperaba que `k=2` encontrara ruta.
 
 ### 11.2 Mecanismos de validación en producción
 
@@ -1252,12 +1434,17 @@ Nota: la prueba `test_admisibilidad_heuristicas` no comprueba numéricamente la 
 | Verificación de caminos | `verificacion/verificador.py` | Seis comprobaciones independientes del algoritmo |
 | Verificación en interfaz | `App._correr`, `App.verificar` | Ejecuta `verificar_camino` y muestra el resultado |
 | Comprobación de algoritmo implementado | `App._ejecutar_busqueda` | Rechaza algoritmos no registrados |
+| Rechazo de estado terminal adversarial | `App._ejecutar_adversarial`, `_evaluar_y_aplicar_adversarial`, `comparar_adversariales`, `turno_ia` | `Reglas.es_terminal` → diálogo «Fin de partida» / retorno temprano |
+| Validación de parámetros adversariales | `algoritmos/minimax._buscar` | `ValueError` si `profundidad_maxima < 1`/no entero o `orden_acciones` fuera de `estandar/inverso/heuristico` |
+| Fallback de acción adversarial | `App.turno_ia` | Si la búsqueda devuelve `accion = None`, se elige una acción aleatoria legal |
 
 ### 11.3 Pruebas no existentes
 
 - No hay pruebas automatizadas de la interfaz gráfica.
 - No hay pruebas de `interfaz/tablero.py`, `interfaz/graficas.py` ni de los flujos de `App` (aunque parte de la lógica se ejerce indirectamente desde los tests de algoritmos y reglas).
-- En la versión inicial documentada no había pruebas de Beam Search ni de Minimax/alfa-beta. Para el componente adversarial se añadieron pruebas en `tests/test_minimax.py`; Beam Search aún requiere una matriz de pruebas específica para k=1,2,4,8.
+- En la versión inicial del manual no había pruebas de Beam Search ni de Minimax/alfa-beta; **hoy existen** (`tests/test_beam_search.py`, 2 pruebas; `tests/test_minimax.py`, 5 pruebas). No hay pruebas que comparen Beam Search contra los costos óptimos de A*/UCS (lo que haría cuantificable su suboptimalidad).
+- No hay pruebas automatizadas que ejerzan la interfaz adversarial (`_ejecutar_adversarial`, `_evaluar_y_aplicar_adversarial`, `comparar_adversariales`).
+- `experimentos/esperados.json` no está conectado a ninguna prueba automatizada (`ejecutar_casos.py` no es ejecutable).
 - No hay medición de cobertura.
 - No hay integración continua configurada.
 
@@ -1325,6 +1512,7 @@ Son las condiciones de entrada fijadas por el experimentador para someter a prue
    - *Distribución de costos graduada:* Zonas de pantano ($c=7$), bosque ($c=4$), pasto ($c=2$) y camino ($c=1$) (`caso4_comparacion_heuristicas.json`).
    - *Corredores y trampas locales:* Laberinto para probar podas agresivas (`caso05_beam_search.json`).
 5. **Dimensiones del mapa:** Escalas desde $4 \times 4$ (microescenarios) hasta $20 \times 20$ y $40 \times 40$ (gran escala).
+6. **Algoritmo adversarial y su configuración** (casos 7–10): $\text{Alg}_{adv} \in \{\text{Minimax}, \text{Alfa-Beta}\}$, profundidad $d \in \{1, 2, 3, 4\}$ (la interfaz permite 1–8) y orden de acciones $\text{ord} \in \{\text{estandar}, \text{inverso}, \text{heurístico}\}$.
 
 #### B. Variables Dependientes (Métricas de rendimiento observadas)
 Parámetros cuantitativos medidos durante y después de la ejecución:
@@ -1337,6 +1525,7 @@ Parámetros cuantitativos medidos durante y después de la ejecución:
    - **Longitud del camino ($L$):** Número de pasos o transiciones ($len(\text{camino}) - 1$).
    - **Costo total acumulado ($C$):** Suma aritmética de los costos de transición: $C = \sum_{i=1}^L \text{costo}(v_i)$.
 5. **Validez formal del camino:** Evaluación booleana exhaustiva mediante el módulo `verificacion/verificador.py` (las 6 reglas de integridad espacial, ortogonalidad y costo).
+6. **Métricas adversariales** (solo casos 7–10): **nodos evaluados** (hojas y estados sin acciones legales), **nodos generados** (hijos creados), **nodos podados** (hermanos descartados por corte $\alpha \ge \beta$) y **valor utilitario** $V$ de la jugada elegida desde la perspectiva del bando en turno.
 
 #### C. Variables de Control (Condiciones estandarizadas)
 Factores mantenidos estrictamente constantes para garantizar validez interna y repetibilidad:
@@ -1349,7 +1538,7 @@ Factores mantenidos estrictamente constantes para garantizar validez interna y r
 
 ### 12.3 Hipótesis experimentales formales
 
-Se formularon cinco hipótesis de trabajo para someter a prueba empírica:
+Se formularon siete hipótesis de trabajo para someter a prueba empírica:
 
 * **Hipótesis 1 (Optimalidad de UCS vs. Ceguera de costo en BFS):**
   *En escenarios con costos de terreno heterogéneos donde la ruta geométrica más corta atraviesa terrenos de alto costo, BFS hallará el camino con menor número de transiciones pero costo total subóptimo, mientras que UCS garantizará el costo óptimo a expensas de mayor número de pasos ($C_{\text{UCS}} < C_{\text{BFS}}$ y $L_{\text{UCS}} \ge L_{\text{BFS}}$).*
@@ -1361,6 +1550,10 @@ Se formularon cinco hipótesis de trabajo para someter a prueba empírica:
   *Beam Search mantendrá el tamaño de su frontera estrictamente acotado por el parámetro $k$ (memoria pico $= k$). Con valores reducidos de $k$ ($k=1, 2$) el algoritmo incurrirá en incompletitud (fallo ante obstáculos), mientras que al incrementar $k$ recuperará la capacidad de encontrar el objetivo manteniendo un consumo de memoria órdenes de magnitud inferior a BFS y A*.*
 * **Hipótesis 5 (Ineficiencia patológica de DFS en grafos ortogonales):**
   *En cuadrículas sin cotas de profundidad, DFS generará caminos con una longitud y costo desmesuradamente superiores a los óptimos ($L_{\text{DFS}} \gg L_{\text{BFS}}$) acumulando una cantidad elevada de nodos en su frontera en forma de pila.*
+* **Hipótesis 6 (Equivalencia con poda en búsqueda adversarial):**
+  *Para la misma utilidad y la misma profundidad, Alfa-Beta devolverá la acción y el valor idénticos a los de Minimax, evaluando estrictamente menos nodos ($N_{\text{eval}}(\text{AB}) < N_{\text{eval}}(\text{MM})$) y registrando nodos podados positivos.*
+* **Hipótesis 7 (Independencia del orden de acciones):**
+  *El orden de las acciones legales ($\text{estandar}$, $\text{inverso}$, $\text{heurístico}$) modifica el esfuerzo de exploración pero no el valor óptimo ni la acción seleccionada ($V_{\text{estandar}} = V_{\text{inverso}} = V_{\text{heurístico}}$).*
 
 ---
 
@@ -1372,7 +1565,8 @@ Para asegurar que las mediciones temporales no se vean afectadas por fluctuacion
 2. **Muestreo repetido:** Cada algoritmo se ejecuta $R = 5$ repeticiones consecutivas e independientes sobre la misma instancia del problema.
 3. **Métrica temporal:** Se reporta la media aritmética del tiempo de CPU:
    $$\bar{t} = \frac{1}{R} \sum_{r=1}^R t_r$$
-4. **Validación automática:** Todo camino resultante es evaluado por `verificar_camino()`. Cualquier discrepancia de coordenadas o costo marcaría el resultado como inválido (`FALLO`).
+4. **Validación automática:** Todo camino resultante es evaluado por `verificar_camino()`. Cualquier discrepancia de coordenadas o costo marcaría el resultado como inválido (`FALLO`); si el algoritmo no encontró ruta no hay nada que verificar y se registra `—`.
+5. **Validación adversarial:** los casos 7–10 repiten 5 veces cada configuración y promedian `tiempo_ms`; la equivalencia Minimax/alfa-beta y la independencia del orden se contrastan en `tests/test_minimax.py` (Hipótesis 6 y 7).
 
 ---
 
@@ -1380,12 +1574,12 @@ Para asegurar que las mediciones temporales no se vean afectadas por fluctuacion
 
 ### 13.1 Entorno y protocolo de experimentación
 
-Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el script reproducible [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py).
+Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el script reproducible [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py), que genera [`resultados_experimentos_busqueda.md`](resultados_experimentos_busqueda.md) con tres secciones: **casos mínimos 1–5**, **casos robustos `R01–R08`** y **casos adversariales 7–10**.
 
-* **Plataforma de pruebas:** Python 3.12.0 sobre Windows 11 (arquitectura x86_64).
-* **Protocolo de medición:** Cada algoritmo se evaluó con 5 repeticiones independientes sobre la misma instancia del problema para mitigar la varianza en el reloj del sistema operativo (`time.perf_counter`), reportando el tiempo promedio en milisegundos (`ms`).
-* **Verificación de correctitud:** Cada camino obtenido fue validado de forma automática e independiente por `verificar_camino()` comprobando origen, destino, límites, transitabilidad, ortogonalidad y consistencia exacta del costo acumulado.
-* **Métricas recolectadas:**
+* **Plataforma de pruebas:** Python 3.12.0 (mediciones originales, octubre de 2026) y **Python 3.14.0 sobre Windows 11 (x86_64) para la re-ejecución del 2026-10-20**, cuyos números son los que se reportan a continuación.
+* **Protocolo de medición:** Cada configuración se evaluó con 5 repeticiones independientes sobre la misma instancia del problema para mitigar la varianza en el reloj del sistema operativo (`time.perf_counter`), reportando el tiempo promedio en milisegundos (`ms`). En los casos adversariales, nodos y tiempo provienen también del promedio de 5 corridas.
+* **Verificación de correctitud:** Cada camino obtenido fue validado de forma automática e independiente por `verificar_camino()` comprobando origen, destino, límites, transitabilidad, ortogonalidad y consistencia exacta del costo acumulado. Si el algoritmo no encontró ruta, la columna **Verif.** registra `—` (no hay camino que validar); si el objetivo no es transitable, el caso se marca **Rechazado** antes de invocar al algoritmo.
+* **Métricas recolectadas (búsqueda):**
   - **Éxito:** Booleano que indica si se alcanzó el estado objetivo.
   - **Longitud:** Número de movimientos o pasos efectivos ($len(\text{camino}) - 1$).
   - **Costo total:** Suma acumulada de los costos de transición del terreno.
@@ -1393,6 +1587,7 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
   - **Estados expandidos:** Nodos extraídos de la frontera y cuyos sucesores fueron evaluados.
   - **Máximo en frontera:** Tamaño máximo simultáneo alcanzado por la estructura de frontera (memoria pico).
   - **Tiempo promedio (ms):** Tiempo de cómputo neto del algoritmo.
+* **Métricas recolectadas (adversarial):** acción recomendada, valor utilitario, profundidad explorada, nodos generados, nodos evaluados (hojas), nodos podados y tiempo promedio.
 
 ---
 
@@ -1404,17 +1599,17 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
 
 | Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **BFS** | Sí | **27** | 27.0 | 358 | 350 | 23 | 2.230 | OK |
-| **DFS** | Sí | 235 | 235.0 | 592 | 309 | **263** | 1.436 | OK |
-| **UCS** | Sí | 27 | 27.0 | 358 | 350 | 23 | 2.421 | OK |
-| **A\* (Manhattan)** | Sí | **27** | 27.0 | **82** | **27** | 55 | **0.244** | OK |
-| **A\* (Propia)** | Sí | **27** | 27.0 | **82** | **27** | 55 | 0.275 | OK |
-| **Beam ($k=2$)** | Sí | 27 | 27.0 | 107 | 53 | **2** | 0.386 | OK |
+| **BFS** | Sí | **27** | 27.0 | 358 | 350 | 23 | 1.664 | OK |
+| **DFS** | Sí | 235 | 235.0 | 592 | 309 | **263** | 2.185 | OK |
+| **UCS** | Sí | 27 | 27.0 | 358 | 350 | 23 | 2.106 | OK |
+| **A\* (Manhattan)** | Sí | **27** | 27.0 | **82** | **27** | 55 | **0.517** | OK |
+| **A\* (Propia)** | Sí | **27** | 27.0 | **82** | **27** | 55 | 0.310 | OK |
+| **Beam ($k=2$)** | Sí | 27 | 27.0 | 107 | 53 | **2** | 0.329 | OK |
 
 #### Análisis del Caso 1:
 1. **Comportamiento de BFS:** Garantiza el camino óptimo en cantidad de pasos (27 movimientos). Al ser una búsqueda no informada en costo uniforme, expande radialmente en ondas (350 nodos expandidos).
 2. **Comportamiento patológico de DFS:** Al descender ciegamente por la primera rama profunda disponible, genera un camino serpenteante y altamente redundante de **235 pasos** (casi 9 veces más largo que el óptimo). Su estructura de pila almacena hasta **263 nodos simultáneos** en frontera, evidenciando su ineficiencia en grafos con cuadrículas sin poda por profundidad.
-3. **Eficacia de A\*:** Al contar con costo homogéneo ($c=1$), la distancia Manhattan es una cota muy precisa. A\* expande **exactamente 27 nodos** (la línea óptima paso a paso) en solo 0.244 ms, ahorrando un **92.3% de expansiones** respecto a BFS.
+3. **Eficacia de A\*:** Al contar con costo homogéneo ($c=1$), la distancia Manhattan es una cota muy precisa. A\* expande **exactamente 27 nodos** (la línea óptima paso a paso) en solo 0.517 ms, ahorrando un **92.3% de expansiones** respecto a BFS.
 4. **Comportamiento de Beam Search ($k=2$):** En terreno abierto con gradiente heurístico continuo hacia el objetivo, un haz de apenas 2 estados encuentra la solución óptima utilizando solo **2 estados en memoria pico**.
 
 ---
@@ -1427,11 +1622,11 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
 
 | Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **BFS** | Sí | **6** | 60.0 | 41 | 33 | 9 | 0.205 | OK |
-| **DFS** | Sí | 142 | 288.0 | 315 | 162 | 153 | 0.772 | OK |
-| **UCS** | Sí | 10 | **19.0** | 85 | 68 | 19 | 0.321 | OK |
-| **A\* (Manhattan)** | Sí | 10 | **19.0** | 45 | 32 | 14 | 0.198 | OK |
-| **A\* (Propia)** | Sí | 10 | **19.0** | **19** | **11** | **8** | **0.080** | OK |
+| **BFS** | Sí | **6** | 60.0 | 41 | 33 | 9 | 0.216 | OK |
+| **DFS** | Sí | 142 | 288.0 | 315 | 162 | 153 | 0.921 | OK |
+| **UCS** | Sí | 10 | **19.0** | 85 | 68 | 19 | 0.288 | OK |
+| **A\* (Manhattan)** | Sí | 10 | **19.0** | 45 | 32 | 14 | 0.165 | OK |
+| **A\* (Propia)** | Sí | 10 | **19.0** | **19** | **11** | **8** | **0.070** | OK |
 
 #### Análisis del Caso 2:
 1. **Divergencia entre longitud y costo:** Este caso evidencia el contraste fundamental entre algoritmos basados en profundidad vs. costo acumulado.
@@ -1449,10 +1644,10 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
 
 | Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **BFS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 1.357 | OK |
-| **UCS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 1.365 | OK |
-| **A\* (Manhattan)** | Sí | 18 | 36.0 | 223 | 185 | 40 | 1.158 | OK |
-| **A\* (Propia)** | Sí | 18 | 36.0 | **206** | **167** | **39** | **1.163** | OK |
+| **BFS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 0.959 | OK |
+| **UCS** | Sí | 18 | 36.0 | 300 | 280 | 20 | 1.184 | OK |
+| **A\* (Manhattan)** | Sí | 18 | 36.0 | 223 | 185 | 40 | **1.112** | OK |
+| **A\* (Propia)** | Sí | 18 | 36.0 | **206** | **167** | **39** | 1.248 | OK |
 
 #### Análisis del Caso 3:
 1. **Evasión de mínimos locales:** Ante una barrera frontal de obstáculos, los algoritmos informados (A\*) exploran inicialmente las celdas frontales del muro atraídos por la heurística Manhattan antes de rodearlo lateralmente.
@@ -1468,9 +1663,9 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
 
 | Algoritmo / Heurística | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **UCS (Sin información, $h=0$)** | Sí | 22 | 52.0 | 388 | 384 | 22 | 1.913 | OK |
-| **A\* (Heurística Manhattan)** | Sí | 22 | 52.0 | 372 | 353 | 43 | 2.124 | OK |
-| **A\* (Heurística Propia)** | Sí | 22 | 52.0 | **273** | **232** | 43 | **1.563** | OK |
+| **UCS (Sin información, $h=0$)** | Sí | 22 | 52.0 | 388 | 384 | 22 | 2.026 | OK |
+| **A\* (Heurística Manhattan)** | Sí | 22 | 52.0 | 372 | 353 | 43 | 3.062 | OK |
+| **A\* (Heurística Propia)** | Sí | 22 | 52.0 | **273** | **232** | 43 | **2.218** | OK |
 
 #### Análisis del Caso 4 (Dominancia y poda):
 1. **Igualdad de optimalidad:** Las tres búsquedas convergen exactamente en el mismo costo mínimo global ($52.0$) y misma longitud ($22$ pasos), ratificando la admisibilidad de ambas funciones heurísticas.
@@ -1478,7 +1673,7 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
    - Heurística Manhattan: $h_M(s) = d_M(s, \text{meta}) \cdot c_{\min}$.
    - Heurística Propia: $h_P(s) = (d_M(s, \text{meta}) - 1) \cdot c_{\min} + \text{costo}(\text{meta})$.
    - Como $\text{costo}(\text{meta}) \ge c_{\min}$, se cumple matemáticamente que $\forall s, h_P(s) \ge h_M(s)$.
-   - Consecuencia práctica observada: **A\* con Heurística Propia expande solo 232 nodos frente a 353 con Manhattan**, logrando una **reducción del 34.3% en el espacio de búsqueda explorado** y un tiempo de cómputo 26.4% más veloz.
+   - Consecuencia práctica observada: **A\* con Heurística Propia expande solo 232 nodos frente a 353 con Manhattan**, logrando una **reducción del 34.3% en el espacio de búsqueda explorado** y un tiempo de cómputo 27.6% más veloz (2.218 ms frente a 3.062 ms en esta corrida).
 
 ---
 
@@ -1491,17 +1686,93 @@ Los experimentos cuantitativos se ejecutaron de manera automatizada mediante el 
 
 | Algoritmo / Configuración | Éxito | Longitud | Costo | Generados | Expandidos | Máx Frontera | Tiempo (ms) | Verificación |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **BFS (Línea base exhaustiva)** | Sí | 31 | 31.0 | 329 | 321 | 20 | 1.409 | OK |
-| **A\* Manhattan (Línea base informada)** | Sí | **31** | **31.0** | 219 | 178 | 40 | 1.112 | OK |
-| **Beam ($k=1$, Greedy local)** | **No** | — | — | 25 | 9 | **1** | 0.075 | **FALLO** |
-| **Beam ($k=2$)** | **No** | — | — | 31 | 17 | **2** | 0.114 | **FALLO** |
-| **Beam ($k=4$)** | Sí | 55 | 55.0 | 266 | 213 | **4** | 1.248 | OK |
-| **Beam ($k=8$)** | Sí | **31** | **31.0** | 276 | 234 | **8** | 1.325 | OK |
+| **BFS (Línea base exhaustiva)** | Sí | 31 | 31.0 | 329 | 321 | 20 | 1.324 | OK |
+| **A\* Manhattan (Línea base informada)** | Sí | **31** | **31.0** | 219 | 178 | 40 | 2.545 | OK |
+| **Beam ($k=1$, Greedy local)** | **No** | — | — | 25 | 9 | **1** | 0.206 | — |
+| **Beam ($k=2$)** | **No** | — | — | 31 | 17 | **2** | 0.286 | — |
+| **Beam ($k=4$)** | Sí | 55 | 55.0 | 266 | 213 | **4** | 3.037 | OK |
+| **Beam ($k=8$)** | Sí | **31** | **31.0** | 276 | 234 | **8** | 2.906 | OK |
 
 #### Análisis del Caso 5 (Compromiso memoria vs. completitud y optimalidad):
 1. **Incompletitud con haz estrecho ($k=1$ y $k=2$):** Al podar agresivamente todos los estados excepto los mejores $k$ en cada nivel, el algoritmo descarta ramas alternativas y queda atrapado en un callejón sin salida (mínimo local), terminando con `exito = False`.
 2. **Suboptimalidad con haz intermedio ($k=4$):** Logra sortear el obstáculo pero al haber podado el camino principal más directo, encuentra una solución que requiere **55 pasos**, casi el doble de la ruta óptima.
 3. **Equilibrio y eficiencia con $k=8$:** Con un haz de 8 estados, Beam Search encuentra la **solución óptima exacta (31 pasos, costo 31.0)** manteniendo un consumo de memoria estrictamente acotado a **máximo 8 estados en frontera**, en comparación con los 40 estados simultáneos que requiere A\* y los 20 de BFS.
+
+---
+
+### 13.7 Casos robustos de búsqueda (`R01` a `R08`)
+
+* **Archivo de resultados completo:** [`resultados_experimentos_busqueda.md`](resultados_experimentos_busqueda.md), sección «2. Casos robustos de búsqueda».
+* **Objetivo:** someter a los algoritmos a situaciones límite del cargador y del mapa (metas inalcanzables, origen igual a meta, mapas no cuadrados, unidades encerradas, objetivos no transitables, costos fraccionarios, nombres de terreno nuevos y mapas grandes), sin variar los algoritmos.
+
+| Robusto | Situación límite | Resultado observado |
+|---|---|---|
+| `R01` meta inalcanzable | Meta rodeada de muros | Los cinco algoritmos terminan con `exito = No` (BFS/UCS/A* expanden los 391 estados transitables; DFS usan pila de 348). **Ninguno se bloquea**: se respeta la completitud de la búsqueda con detección de exhaustión. |
+| `R02` origen = meta | $s_0 = g$ | Camino vacío: longitud `0`, costo `0.0`, 1 estado generado, 0 expandidos, verificación `OK`. |
+| `R03` corredor 1×20 | Mapa no cuadrado, camino único | Todos hallan 19 movimientos con costo **29.0** ($9 \times 1 + 10 \times 2$), coincidiendo con el cálculo previo de la sección 11.4; Beam con $k=1$ también (sin bifurcaciones que podar). |
+| `R04` unidad encerrada | A1 rodeada de muros | 1 estado generado y 1 expandido por algoritmo: la búsqueda se agota de inmediato con `exito = No` sin recorrer el mapa. |
+| `R05` objetivo en muro | `prueba.objetivo` sobre celda no transitable | **Rechazado antes de invocar al algoritmo** (misma precondición que `App._problema`); no se ejecuta ninguna búsqueda. |
+| `R06` costos fraccionarios | Terreno `autopista` con $c = 0.5$ | BFS devuelve costo `21.0` (ignora costos) y DFS `357.5` en 367 movimientos; **UCS y ambas A\* convergen en `11.5`**; A* con Heurística Propia expande solo 21 nodos (frente a 189 de UCS). |
+| `R07` dimensiones y nombres nuevos | 8×12, terrenos `sendero`/`arena`/`agua`/`roca` | El cargador acepta los nombres declarados en el JSON y los algoritmos usan sus costos: UCS y A\* encuentran `15.0` frente a `25.0` de BFS. |
+| `R08` mapa 40×40 | Escala con ~5% de muros aleatorios (semilla fija) | Óptimo de 70 movimientos y costo `77.0` (UCS y A\* coinciden); BFS devuelve `142.0` y DFS `2028.0` con 966 movimientos y 1220 nodos en pila. **A\* expande 694 nodos frente a los 1509 de UCS (54.1% menos)**. |
+
+**Análisis del conjunto robusto:**
+1. **Completitud y terminación:** los casos sin solución (`R01`, `R04`) terminan de forma limpieta en todos los algoritmos, incluido Beam Search con haz acotado.
+2. **Degeneraciones bien manejadas:** `R02` (camino nulo) y `R05` (rechazo previo) no producen errores ni excepciones.
+3. **Consistencia de costos:** en los escenarios con costos uniformes o fraccionarios, UCS y A\* coinciden en el costo óptimo en todos los casos, lo que confirma la admisibilidad de las heurísticas incluso con $c_{\min} = 0.5$.
+4. **Comportamiento esperado de DFS:** en `R06` y `R08` DFS sigue siendo el peor tanto en costo como en memoria (362 y 1220 nodos de pila respectivamente), en línea con la Hipótesis 5.
+
+---
+
+### 13.8 Casos adversariales (7 al 10): Minimax frente a Poda Alfa-Beta
+
+* **Archivos:** `escenarios/casos minimos/caso07_decision_adversarial.json`, `caso08_minimax_vs_alfa_beta.json`, `caso09_orden_acciones.json`, `caso10_profundidad.json`.
+* **Archivo de resultados completo:** [`resultados_experimentos_busqueda.md`](resultados_experimentos_busqueda.md), sección «3. Casos adversariales» (promedios de 5 corridas).
+* **Todas las configuraciones parten del bando A en turno**; la utilidad se reporta desde su perspectiva.
+
+#### Caso 7: Decisión adversarial (interceptación táctica)
+
+| Algoritmo / Config | Acción recomendada | Valor | Prof. | Generados | Evaluados | Podados | Tiempo (ms) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **MINIMAX** (prof 3, estandar) | A1 → (8, 9) | 87.00 | 3 | 3234 | 3009 | 0 | 32.710 |
+| **ALFA_BETA** (prof 3, estandar) | A1 → (8, 9) | 87.00 | 3 | 358 | 300 | 488 | 3.587 |
+
+**Análisis:** ambos algoritmos eligen la misma jugada (interceptar al portador rival `B1`), valor `87.00`. La poda reduce las evaluaciones de **3009 a 300 (−90.0%)** y el tiempo de **32.710 ms a 3.587 ms (−89.0%)**, dejando en el árbol 488 ramas hermanas sin visitar. La prueba `test_caso7_intercepta_portador_adyacente` además comprueba que, tras la jugada, `B1` desaparece y `A1` pasa a ser portadora.
+
+#### Caso 8: Minimax frente a poda alfa-beta
+
+| Algoritmo / Config | Acción recomendada | Valor | Prof. | Generados | Evaluados | Podados | Tiempo (ms) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **MINIMAX** (prof 3, estandar) | A1 → (9, 7) | 5.00 | 3 | 3496 | 3255 | 0 | 33.834 |
+| **ALFA_BETA** (prof 3, estandar) | A1 → (9, 7) | 5.00 | 3 | 628 | 543 | 600 | 6.169 |
+
+**Análisis (validación de la Hipótesis 6):** misma acción y mismo valor (`5.00`), con **83.3% menos de nodos evaluados** (543 frente a 3255), **600 nodos podados** y un tiempo **81.8% menor**. Minimax, al no podar, registra `nodos_podados = 0`.
+
+#### Caso 9: Impacto del orden de acciones en la poda alfa-beta
+
+| Orden de acciones | Acción recomendada | Valor | Prof. | Generados | Evaluados | Podados | Tiempo (ms) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `estandar` | A1 → (9, 7) | 5.00 | 3 | 628 | 543 | 600 | 7.290 |
+| `inverso` | A1 → (9, 7) | 5.00 | 3 | 2008 | 1829 | 622 | 42.203 |
+| `heurístico` | A1 → (9, 7) | 5.00 | 3 | 276 | 231 | 392 | 10.021 |
+
+**Análisis (validación de la Hipótesis 7):** los tres órdenes devuelven **exactamente el mismo valor y la misma acción**, pero el esfuerzo varía más de **8×** (de 231 a 1829 evaluaciones). El orden inverso es el peor (retrocede en la frontera buena) y el heurístico el mejor en nodos; no obstante su tiempo (10.021 ms) supera ligeramente al `estandar` (7.290 ms), porque ordenar exige evaluar una vez la utilidad de cada sucesor antes de explorar.
+
+#### Caso 10: Efecto de la profundidad en Minimax / alfa-beta
+
+| Profundidad | Acción recomendada | Valor | Prof. | Generados | Evaluados | Podados | Tiempo (ms) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | A1 → (9, 7) | 5.00 | 1 | 16 | 15 | 0 | 0.328 |
+| 2 | A1 → (9, 7) | 0.00 | 2 | 45 | 29 | 196 | 2.543 |
+| 3 | A1 → (9, 7) | 5.00 | 3 | 276 | 231 | 392 | 8.264 |
+| 4 | A1 → (9, 7) | 0.00 | 4 | 709 | 433 | 3416 | 39.421 |
+
+**Análisis:** el coste crece rápidamente con $d$ (de 15 a 433 evaluaciones y de 0.328 a 39.421 ms al pasar de 1 a 4 plies), mientras la poda acumula 3416 ramas descartadas en $d=4$. El valor **alterna** `5.00 → 0.00 → 5.00 → 0.00`: con horizonte par, la ventana de respuesta del rival queda en un estado cuya utilidad evaluada es 0.00, mientras que con horizonte impar termina en un estado favorable. La acción elegida permanece estable (`A1 → (9,7)`), lo que muestra que la decisión no es sensible a la profundidad en este estado, aunque el valor sí lo es.
+
+**Síntesis de los casos adversariales:**
+- **Hipótesis 6 confirmada** (casos 7 y 8): alfa-beta reproduce el valor y la acción de Minimax con una fracción del trabajo.
+- **Hipótesis 7 confirmada** (caso 9): el orden modifica el esfuerzo, no el resultado.
+- La profundidad es la palanca de costo dominante (caso 10): duplicar $d$ multiplica las evaluaciones por entre 3× y 10×.
 
 ---
 
@@ -1588,13 +1859,14 @@ En el contexto de la cuadrícula 2D ortogonal y las reglas de TacticalGrid, los 
   - Con un ordenamiento óptimo de acciones (evaluando primero las mejores jugadas), el factor de ramificación efectivo se reduce a la raíz cuadrada $\sqrt{b}$, alcanzando una complejidad temporal de:
     $$O\left(b^{d_{\text{adv}} / 2}\right)$$
   - Esta reducción cuadrática en el tiempo permite que Alfa-Beta analice el **doble de profundidad** táctica que Minimax bajo el mismo límite de tiempo.
-  *(Detalles cuantitativos y función de evaluación: a completar al integrar el módulo adversarial).*
+  - **Función de evaluación implementada** (`algoritmos/minimax._utilidad`): valores terminales $\pm 100000$ (según `Reglas.ganador`), más material ($35$ por unidad de diferencia), más posesión del recurso ($\pm(180 - 8 \cdot d)$ respecto a la base) con bono/penalización de presencia rival cercana ($\max(0, 5 - d) \cdot 12$), o, si el recurso está en el suelo, $5 \cdot (d_{\text{rival}} - d_{\text{propio}})$.
+  - **Evidencia cuantitativa** (sección 13.8): en el Caso 8, alfa-beta reproduce exactamente la acción y el valor de Minimax ($5.00$) evaluando **543 nodos frente a 3255** (−83.3%) con 600 podas; en el Caso 9, la variación del orden de acciones mantiene el valor y multiplica el esfuerzo por hasta 8×.
 
 ---
 
 ### 14.4 Contraste empírico: Teoría vs. Mediciones Reales en TacticalGrid
 
-Las predicciones asintóticas se contrastan directamente con las mediciones empíricas recolectadas en la Sección 12:
+Las predicciones asintóticas se contrastan directamente con las mediciones empíricas recolectadas en la Sección 13:
 
 | Fenómeno Teórico | Predicción Asintótica | Evidencia Empírica en TacticalGrid |
 |---|---|---|
@@ -1602,7 +1874,10 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 | **Ceguera de costo en BFS** | Optimiza $d$, no $C^*$ | **Caso 2:** BFS halló la ruta más corta (6 pasos) pero con costo excesivo de 60.0; UCS halló el costo óptimo de 19.0 en 10 pasos. |
 | **Poda de A\* vs. UCS** | $E(A^*) \ll E(\text{UCS})$ por guía de $h(n)$ | **Caso 1:** A* expandió exactamente 27 nodos frente a los 350 nodos de UCS (reducción del 92.3% del árbol explorado). |
 | **Dominancia $h_P \ge h_M$** | $E(A^*_{h_P}) \subseteq E(A^*_{h_M})$ | **Caso 4:** A* con Heurística Propia expandió 232 nodos frente a 353 con Manhattan (ahorro de 121 estados). |
-| **Memoria acotada de Beam Search** | Máximo de frontera acotado estrictamente por $k$ | **Caso 5:** Con $k=8$, Beam Search resolvió la ruta óptima de 31 pasos manteniendo una frontera pico de exactamente 8 estados, frente a 40 de A*. |
+| **Memoria acotada de Beam Search** | Máximo de frontera acotado estrictamente por $k$ | **Caso 5:** con $k=8$, Beam Search resolvió la ruta óptima de 31 pasos manteniendo una frontera pico de exactamente 8 estados, frente a 40 de A* y 20 de BFS. |
+| **Incompletitud de Beam con haz estrecho** | Poda de ramas viables → puede fallar | **Caso 5:** $k=1$ y $k=2$ terminan con `exito = No`; $k=4$ halla una ruta subóptima (55 pasos); $k=8$ recupera el óptimo. |
+| **Equivalencia con poda alfa-beta** | $V(\text{AB}) = V(\text{MM})$ con menos nodos | **Casos 7 y 8:** misma acción y valor; 300 vs 3009 y 543 vs 3255 nodos evaluados (−90.0% y −83.3%). |
+| **Efecto del orden en la poda** | Hasta $O(b^{d/2})$ con orden óptimo | **Caso 9:** mismo valor con los tres órdenes; evaluaciones de 231 (heurístico) a 1829 (inverso). |
 
 ---
 
@@ -1612,11 +1887,12 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 
 | Elemento | Evidencia | Estado |
 |---|---|---|
-| Beam Search | `algoritmos/beam_search.py` registra el algoritmo | Implementado; falta completar pruebas comparativas para k=1,2,4,8 |
-| Comparación con `k` | `algoritmos/beam_search.py` acepta el ancho de haz | Parcial: falta ejecutar y registrar todos los valores exigidos |
+| Beam Search | `algoritmos/beam_search.py` registra `BEAM_SEARCH`; `tests/test_beam_search.py` y Caso 5 | **Implementado y probado** (`k = 1, 2, 4, 8`) |
+| Comparación con `k` | Caso 5 en §13.6 y en `resultados_experimentos_busqueda.md` | **Registrado** para los cuatro valores exigidos |
 | Minimax | `algoritmos/minimax.py`, interfaz y `tests/test_minimax.py` | Implementado y probado en los escenarios 7–10 |
 | Alfa-beta | `algoritmos/minimax.py`, interfaz y reporte experimental | Implementado y probado en los escenarios 7–10 |
 | Controlador de partida por IA | `turno_ia` admite Humano, Azar, Minimax y Alfa-Beta | Implementado |
+| Tabla «esperado vs. obtenido» | `experimentos/ejecutar_casos.py` + `esperados.json` | **Pendiente**: el script no ejecuta (véase 15.2) |
 
 
 ### 15.2 Deuda técnica y limitaciones verificables
@@ -1630,7 +1906,14 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 | Campo `tipo` de unidades | Se acepta en el JSON pero no se modela en `Unidad` ni se usa en reglas |
 | `version` sin validación de valor | Solo se exige la clave |
 | Bases y recurso sobre obstáculos | No se rechazan (el PDF solo prohíbe unidades sobre celdas no transitables); el validador emite un **aviso** no bloqueante (`advertencias_datos`) |
-| Generador de casos | `generar_casos_minimos.py` solo genera los casos 1, 5 y 6 (el resto se editó a mano); ya escribe en `casos minimos` |
+| Generador de casos | `generar_casos_minimos.py` solo genera los casos 1, 5 y 6 (el resto se editó a mano) y escribe en `escenarios/casos_minimos` (guion bajo), no en `casos minimos` |
+| Generador de robustos/inválidos | `generar_casos_robustez.py` escribe en `escenarios/robustez` y `escenarios/invalidos`, carpetas distintas de las versionadas `casos_robustos` y `casos_invalidos` |
+| `experimentos/ejecutar_casos.py` no ejecuta | Importa `algoritmos.adversarial` y `verificacion.verificador_adversarial`, módulos inexistentes (`ModuleNotFoundError: No module named 'algoritmos.adversarial'`) |
+| `esperados.json` fuera de sincronía | Sus claves de configuración usan `orden`, mientras que `minimax.py`/la interfaz usan `orden_acciones`; además los algoritmos adversariales declarados ahí esperan el módulo `algoritmos.adversarial` ausente |
+| `resultados/tabla_esperado_vs_obtenido.*` desactualizada | Todas las filas dicen `DIFIERE` porque apuntan a `casos_minimos/...` inexistentes (corrida previa de `ejecutar_casos.py`) |
+| Desplegable de heurísticas de la interfaz | `HEURISTICAS = ("manhattan", "propia")` en `interfaz/app.py`: la heurística `euclidiana` solo es accesible por código |
+| Bytecode versionado | `__pycache__/*.pyc` están rastreados en Git pese a aparecer en `.gitignore` (se añadieron antes de la regla), por lo que aparecen como modificados en cada corrida |
+| Árbol de trabajo sin commitear (2026-10-20) | `M tests/test_beam_search.py`, `M tests/test_paso1_2.py`, `M experimentos/ejecutar_experimentos_busqueda.py`, `M documentacion/*`; `?? experimentos/ejecutar_casos.py`, `?? experimentos/esperados.json`, `?? experimentos/generar_casos_robustez.py`, `?? resultados/` |
 | Crecimiento del historial | El historial se mantiene en memoria y crece con cada ejecución; cada ejecución de A* agrega una entrada por heurística ejecutada |
 | Costo en BFS/DFS | El costo reportado corresponde al camino hallado; no se optimiza por costo |
 | Condiciones previas no verificadas en tiempo de ejecución | Varias funciones asumen precondiciones (`Reglas.aplicar`, `reconstruir_camino`, `Mapa.costo`) y pueden lanzar excepciones si se violan |
@@ -1643,10 +1926,10 @@ Las predicciones asintóticas se contrastan directamente con las mediciones emp�
 
 - No se verificó el comportamiento visual de la interfaz en ejecución (no se abrió la ventana durante esta elaboración).
 - No se verificó el rendimiento en escenarios de gran tamaño más allá de lo que miden las pruebas.
-- No se verificó la ejecución de `experimentos/generar_casos_minimos.py` ni `experimentos/caso06_estado_compuesto.py` durante esta elaboración.
-- No se verificó compatibilidad real con Python 3.9, 3.10 u 3.11; solo se ejecutó con 3.12.0.
+- No se verificó la ejecución de `experimentos/generar_casos_minimos.py` ni `experimentos/generar_casos_robustez.py` (regenerarían carpetas con otros nombres) ni `experimentos/ejecutar_casos.py` (no ejecuta).
+- No se verificó compatibilidad real con Python 3.9, 3.10 ni 3.11; se ejecutó con 3.12.0 (versión inicial) y 3.14.0 (re-ejecución del 2026-10-20).
 - No se pudo determinar la versión del proyecto: no hay etiquetas ni metadatos.
-- No se verificó el contenido de `docs/` ni `heuristicas/` porque están vacíos.
+- No se verificó el contenido de `heuristicas/` porque está vacío; `docs/` ya no existe en el repositorio.
 
 ---
 
@@ -1707,8 +1990,16 @@ El equipo de TacticalGrid utilizó herramientas de inteligencia artificial gener
 * **Validación humana:** El equipo revisó el contenido de cada sección, corrigió imprecisiones factuales (números de línea, estados de implementación), integró datos empíricos reales ejecutando los experimentos y aprobó el lenguaje y nivel de formalización antes de su inclusión definitiva.
 
 #### H. Script de experimentación automatizada
-* **Intervención de IA:** Se generó el script [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py) que automatiza la ejecución de los 5 casos de prueba mínimos, registra métricas con 5 repeticiones y valida los caminos resultantes.
-* **Validación humana:** El equipo ejecutó el script y revisó que las métricas reportadas fueran coherentes con las esperadas según la teoría (por ejemplo, que A* con `h_propia` expandiera menos nodos que con `manhattan`).
+* **Intervención de IA:** Se generó el script [`experimentos/ejecutar_experimentos_busqueda.py`](../experimentos/ejecutar_experimentos_busqueda.py) que automatiza la ejecución de los casos de prueba mínimos, robustos y adversariales, registra métricas con 5 repeticiones y valida los caminos resultantes.
+* **Validación humana:** El equipo ejecutó el script y revisó que las métricas reportadas fueran coherentes con las esperadas según la teoría (por ejemplo, que A* con `h_propia` expandiera menos nodos que con `manhattan`, o que alfa-beta evaluara menos nodos que Minimax).
+
+#### I. Búsqueda adversarial (Minimax y poda alfa-beta)
+* **Intervención de IA:** La IA propuso la estructura recursiva compartida `_buscar(...)` de [`algoritmos/minimax.py`](../algoritmos/minimax.py), la función de evaluación (`_utilidad`) y los tres órdenes de acciones (`estandar`, `inverso`, `heuristico`), además de la integración en la interfaz (formulario adversarial, botones «Evaluar estado»/«Evaluar y jugar» y comparación `MINIMAX` vs `ALFA_BETA`).
+* **Validación humana:** El equipo diseñó los escenarios 7–10, añadió `tests/test_minimax.py` (5 pruebas) y contrastó los resultados con la teoría: equivalencia de valor/acción entre alfa-beta y Minimax (Hipótesis 6) e independencia del orden de acciones (Hipótesis 7). También verificó que las utilidades terminales ($\pm 100000$) dominan la heurística y que los estados terminales rechazan cualquier evaluación.
+
+#### J. Extensión de los reportes experimentales
+* **Intervención de IA:** Se extendió `experimentos/ejecutar_experimentos_busqueda.py` para cubrir además los casos robustos `R01–R08` y los adversariales 7–10, con promedio de 5 corridas y secciones independientes en el reporte.
+* **Validación humana:** El equipo re-ejecutó el script completo, revisó las tres secciones generadas y corrigió en el manual las cifras desactualizadas (tiempos de los casos 1–5 y criterio de éxito de Beam con `k=2`).
 
 ---
 
@@ -1722,8 +2013,8 @@ Para cada contribución de IA se siguió el siguiente protocolo de verificación
 2. RAZONAMIENTO: Se razonó en voz alta (revisión en pareja) la lógica del
    código, identificando precondiciones, postcondiciones y casos borde.
 3. PRUEBA UNITARIA: Se ejecutó la suite de pruebas existente. Si el
-   nuevo código introducía regresiones, se depuró hasta restaurar los 17
-   tests en verde.
+   nuevo código introducía regresiones, se depuró hasta restaurar los
+   tests en verde (17 al inicio del proyecto; 25 en la versión actual).
 4. PRUEBA MANUAL: Para componentes visuales o escenarios, se ejecutó
    la interfaz y se verificó el comportamiento esperado en al menos 3
    escenarios distintos.
@@ -1744,6 +2035,8 @@ Para cada contribución de IA se siguió el siguiente protocolo de verificación
 | Algoritmos UCS y A* | IA (esqueleto) + Humano (ajuste) | Alta: verificación formal de optimalidad |
 | Diseño de heurísticas (`h_manhattan`, `h_propia`) | IA (propuesta) + Humano (demostración matemática) | Muy alta: demostración formal + pruebas |
 | Beam Search | IA (esqueleto) + Humano (parámetro `k`) | Alta: pruebas con `k` variable |
+| Minimax / Poda alfa-beta (`algoritmos/minimax.py`) | IA (esqueleto y función de evaluación) + Humano (escenarios 7–10) | Alta: 5 pruebas de regresión + contraste con la teoría |
+| Integración adversarial en la interfaz | IA (mayoritario) + Humano (prueba manual) | Media: validación de rechazos de estados terminales y del panel de comparación |
 | Interfaz gráfica (Tkinter) | IA (mayoritario) | Media: validación visual interactiva |
 | Escenarios de prueba JSON | IA (generación) + Humano (diseño pedagógico) | Alta: ejecución de todos los escenarios |
 | Suite de pruebas unitarias | Humano (equipo) | — |
@@ -1755,9 +2048,11 @@ Para cada contribución de IA se siguió el siguiente protocolo de verificación
 
 Durante el proceso de validación el equipo detectó y corrigió las siguientes situaciones que la IA no manejó correctamente en primera instancia:
 
-1. **Heurística Euclidiana:** La IA implementó `h_euclidiana` como alternativa pero la eliminó en un commit posterior al detectarse que no aportaba ventaja sobre Manhattan en cuadrículas ortogonales (la distancia euclidiana subestima más que Manhattan, haciéndola menos informada). El equipo corroboró este comportamiento experimentalmente.
-2. **Ruta de escritura del generador de casos:** El script `generar_casos_minimos.py` escribía en la carpeta `casos_minimos` (guion bajo) mientras la carpeta versionada usa `casos minimos` (espacio). Fue detectado en la revisión del código.
+1. **Heurística Euclidiana:** La IA implementó `h_euclidiana` en `a_estrella.py` como tercera heurística. Revisión posterior: no se expone en el desplegable de la interfaz (`HEURISTICAS = ("manhattan", "propia")`), porque en cuadrículas ortogonales euclidiana escala más bajo que Manhattan y no aporta información adicional. Es accesible por código para comparaciones.
+2. **Ruta de escritura del generador de casos:** El script `generar_casos_minimos.py` escribía en la carpeta `casos_minimos` (guion bajo) mientras la carpeta versionada usa `casos minimos` (espacio). Fue detectado en la revisión del código y sigue sin corregirse (véase §15.2).
 3. **Completitud de Beam Search con `k` pequeño:** Los primeros borradores del código de Beam Search no retornaban correctamente un `ResultadoBusqueda` con `exito = False` cuando el haz quedaba vacío; el equipo lo corrigió añadiendo el retorno apropiado al finalizar el bucle.
+4. **Criterio de la prueba de Beam con `k=2`:** la prueba asumía que `k=2` sí hallaba ruta en `caso05_beam_search.json`. La re-ejecución del 2026-10-20 demostró que el haz estrecho queda atrapado en la copa; el equipo corrigió **la prueba y este manual** para alinearlos con el comportamiento medido, sin tocar el algoritmo.
+5. **`experimentos/ejecutar_casos.py`:** el script de «esperado vs. obtenido» fue generado importando módulos que nunca existieron en el repositorio (`algoritmos.adversarial`, `verificacion.verificador_adversarial`), por lo que no se puede ejecutar. El equipo lo documentó como deuda técnica en lugar de darlo por válido.
 
 ---
 
@@ -1905,10 +2200,17 @@ def sucesores(self, s):
 
 #### E.1 Salida de pruebas automatizadas (Suite Unittest)
 
-Ejecución verificada en consola con Python 3.12.0:
+Ejecución verificada en consola con Python 3.14.0 (re-ejecución del 2026-10-20):
 
 ```text
 $ python -m unittest discover -s tests -v
+test_k_1_2_4_8_devuelven_camino_valido_en_caso5 (test_beam_search.TestBeamSearch.test_k_1_2_4_8_devuelven_camino_valido_en_caso5) ... ok
+test_sin_solucion_termina_sin_camino (test_beam_search.TestBeamSearch.test_sin_solucion_termina_sin_camino) ... ok
+test_caso10_profundidades_1_a_4_limitan_busqueda (test_minimax.TestBusquedaAdversarial.test_caso10_profundidades_1_a_4_limitan_busqueda) ... ok
+test_caso7_intercepta_portador_adyacente (test_minimax.TestBusquedaAdversarial.test_caso7_intercepta_portador_adyacente) ... ok
+test_caso8_minimax_y_alfa_beta_equivalentes (test_minimax.TestBusquedaAdversarial.test_caso8_minimax_y_alfa_beta_equivalentes) ... ok
+test_caso9_orden_cambia_trabajo_no_valor (test_minimax.TestBusquedaAdversarial.test_caso9_orden_cambia_trabajo_no_valor) ... ok
+test_rechaza_profundidad_invalida (test_minimax.TestBusquedaAdversarial.test_rechaza_profundidad_invalida) ... ok
 test_costo_no_positivo (test_paso1_2.TestCarga.test_costo_no_positivo) ... ok
 test_dimensiones_inconsistentes (test_paso1_2.TestCarga.test_dimensiones_inconsistentes) ... ok
 test_errores_multiples (test_paso1_2.TestCarga.test_errores_multiples) ... ok
@@ -1920,23 +2222,36 @@ test_hashable_e_inmutable (test_paso1_2.TestJuego.test_hashable_e_inmutable) ...
 test_interceptar (test_paso1_2.TestJuego.test_interceptar) ... ok
 test_no_atraviesa_muro_ni_ocupadas (test_paso1_2.TestJuego.test_no_atraviesa_muro_ni_ocupadas) ... ok
 test_recoger_recurso (test_paso1_2.TestJuego.test_recoger_recurso) ... ok
+test_unidad_que_empieza_sobre_el_recurso_lo_recoge (test_paso1_2.TestJuego.test_unidad_que_empieza_sobre_el_recurso_lo_recoge) ... ok
 test_victoria (test_paso1_2.TestJuego.test_victoria) ... ok
-test_caso2_bfs_vs_ucs_diferencia (test_paso3_ucs.TestUCS.test_caso2_bfs_vs_ucs_diferencia) ... ok
+test_caso2_bfs_vs_ucs_diferencia (test_paso3_ucs.TestUCS.test_caso2_bfs_vs_ucs_diferencia)
+Caso 2: Ruta corta vs. ruta económica. ... ok
 test_ucs_ejecucion_y_verificacion (test_paso3_ucs.TestUCS.test_ucs_ejecucion_y_verificacion) ... ok
 test_admisibilidad_heuristicas (test_paso4_a_estrella.TestAEstrella.test_admisibilidad_heuristicas) ... ok
-test_caso3_obstaculo_y_heuristica (test_paso4_a_estrella.TestAEstrella.test_caso3_obstaculo_y_heuristica) ... ok
-test_caso4_comparacion_heuristicas (test_paso4_a_estrella.TestAEstrella.test_caso4_comparacion_heuristicas) ... ok
+test_caso3_obstaculo_y_heuristica (test_paso4_a_estrella.TestAEstrella.test_caso3_obstaculo_y_heuristica)
+Caso 3: La heurística intenta avanzar en línea recta, pero un muro ... ok
+test_caso4_comparacion_heuristicas (test_paso4_a_estrella.TestAEstrella.test_caso4_comparacion_heuristicas)
+Caso 4: Comparar A* con Manhattan vs Propia en el mismo escenario. ... ok
 
 ----------------------------------------------------------------------
-Ran 17 tests in 0.017s
+Ran 25 tests in 0.153s
 
 OK
 ```
 
+(Versión inicial de este anexo: `Ran 17 tests in 0.017s ... OK` con Python 3.12.0; los 8 tests adicionales corresponden a `test_beam_search.py` y `test_minimax.py`, más la prueba `test_unidad_que_empieza_sobre_el_recurso_lo_recoge` que faltaba listar.)
+
 #### E.2 Ejecución del generador de resultados cuantitativos
 
 Ejecución automatizada mediante `python experimentos/ejecutar_experimentos_busqueda.py`:
-Los resultados completos y tabulados por caso se encuentran documentados en la Sección 12 de este manual técnico y guardados en el reporte `documentacion/resultados_experimentos_busqueda.md`. Todos los caminos fueron comprobados exitosamente por las 6 reglas del módulo `verificacion/verificador.py`.
+Los resultados completos y tabulados (casos mínimos 1–5, robustos `R01–R08` y adversariales 7–10) se documentan en la **Sección 13** de este manual técnico y quedan guardados en el reporte `documentacion/resultados_experimentos_busqueda.md`. Todos los caminos obtenidos fueron comprobados por las 6 reglas del módulo `verificacion/verificador.py` (los casos sin ruta se reportan con `—` y los no transitables como `Rechazado`). La salida de consola termina con:
+
+```text
+[OK] Resultados guardados exitosamente en:
+  C:\...\TacticalGrid\documentacion\resultados_experimentos_busqueda.md
+```
+
+Complementariamente, `python experimentos/ejecutar_casos_adversariales.py` imprime por consola los mismos casos 7–10 en formato legible.
 
 ### 17.6 Anexo F — Inventario de escenarios
 
@@ -1954,6 +2269,10 @@ Los resultados completos y tabulados por caso se encuentran documentados en la S
 | `escenarios/casos minimos/caso05_beam_search.json` | Referencia `BEAM_SEARCH`, `k=1` | `busqueda` |
 | `escenarios/casos minimos/caso06a_sin_recurso.json` | Estado compuesto sin portador | `adversarial` |
 | `escenarios/casos minimos/caso06b_con_recurso.json` | Estado compuesto con portador `A1` | `adversarial` |
+| `escenarios/casos minimos/caso07_decision_adversarial.json` | Portador rival `B1` adyacente; profundidad 3 | `adversarial` |
+| `escenarios/casos minimos/caso08_minimax_vs_alfa_beta.json` | Par Minimax vs Alfa-Beta | `adversarial` |
+| `escenarios/casos minimos/caso09_orden_acciones.json` | Orden de acciones `estandar`/`inverso`/`heuristico` | `adversarial` |
+| `escenarios/casos minimos/caso10_profundidad.json` | Profundidad 1–4 | `adversarial` |
 | `escenarios/casos_invalidos/inv01_dimensiones_inconsistentes.json` | Dimensiones incoherentes | No aplica (inválido) |
 | `escenarios/casos_invalidos/inv02_terreno_inexistente.json` | Terreno no declarado | No aplica (inválido) |
 | `escenarios/casos_invalidos/inv03_costo_cero.json` | Costo no positivo | No aplica (inválido) |
@@ -1996,4 +2315,4 @@ Los resultados completos y tabulados por caso se encuentran documentados en la S
 
 ### Nota final de alcance documental
 
-Este manual describe el estado del repositorio en el commit `36782b9` de la rama `main`. Cualquier cambio posterior en el código puede invalidar total o parcialmente las referencias de línea y los comportamientos aquí descritos. Las secciones marcadas con `[PENDIENTE DE IMPLEMENTACIÓN]`, `[COMPLETAR CUANDO SE IMPLEMENTE]` o `[AGREGAR EVIDENCIA]` requieren completarse con información o artefactos que no existen en el repositorio al momento de la elaboración.
+Este manual describe el estado del repositorio en el commit `ae0664c` de la rama `main`, más los cambios sin commitear señalados en la portada y en la sección 15.2. Cualquier cambio posterior en el código puede invalidar total o parcialmente las referencias de línea y los comportamientos aquí descritos. Las secciones marcadas con `[PENDIENTE DE IMPLEMENTACIÓN]`, `[COMPLETAR CUANDO SE IMPLEMENTE]` o `[AGREGAR EVIDENCIA]` requieren completarse con información o artefactos que no existen en el repositorio al momento de la elaboración.
