@@ -16,13 +16,19 @@ from interfaz.tablero import (COLOR_BANDO, FONDO, MARCOS, OBJETIVO, ORO, PANEL, 
 from juego.problema_navegacion import ProblemaNavegacion
 from juego.reglas import Reglas
 from verificacion.verificador import verificar_camino
-#from algoritmos.minimax import minimax, alfa_beta
+from algoritmos.minimax import minimax, alfa_beta
 
 TAREAS = {"Búsqueda de ruta": "busqueda", "Partida por turnos": "partida", "Decisión adversarial": "adversarial"}
 MODO_A_TAREA = {v: k for k, v in TAREAS.items()}
 METRICAS = {"Estados expandidos": "estados_expandidos", "Estados generados": "estados_generados",
             "Costo": "costo", "Longitud": "longitud", "Máx. frontera": "maximo_frontera",
             "Tiempo (ms)": "tiempo_ms"}
+METRICAS_ADV = {"Nodos evaluados": "nodos_evaluados", "Nodos generados": "nodos_generados",
+                "Nodos podados": "nodos_podados", "Valor Minimax": "valor", "Tiempo (ms)": "tiempo_ms"}
+COLS_BUSQ = {"alg": "Algoritmo", "exito": "Éxito", "long": "Long.", "costo": "Costo",
+             "gen": "Gener.", "exp": "Expand.", "fr": "Front.", "t": "ms", "ver": "Verif."}
+COLS_ADV = {"alg": "Algoritmo", "exito": "Decisión", "long": "Prof.", "costo": "Valor",
+            "gen": "Nodos gen.", "exp": "Nodos eval.", "fr": "Podados", "t": "ms", "ver": "Verif."}
 HEURISTICAS = ("manhattan", "propia")
 MAX_JUGADAS_AUTO = 300
 EJEMPLO = os.path.join(os.path.dirname(__file__), "..", "escenarios", "ejemplo.json")
@@ -36,6 +42,13 @@ def fmt(v):
     if isinstance(v, float):
         return f"{round(v, 3):g}"
     return str(v)
+
+
+def _desc_accion(a):
+    """Descripción legible de una acción para la barra de estado y el historial."""
+    if a is None:
+        return "ninguna"
+    return f"{a.unidad_id} espera" if a.tipo == "ESPERAR" else f"{a.unidad_id}->{a.destino}"
 
 
 class App(tk.Tk):
@@ -378,9 +391,10 @@ class App(tk.Tk):
         fb = ttk.Frame(t)
         fb.pack(fill="x", pady=6)
         self.var_met_est = tk.StringVar(value="Estados expandidos")
-        cb = ttk.Combobox(fb, textvariable=self.var_met_est, values=list(METRICAS), state="readonly", width=20)
-        cb.pack(side="left")
-        cb.bind("<<ComboboxSelected>>", lambda e: self._graficar_estadisticas())
+        self.cb_met_est = ttk.Combobox(fb, textvariable=self.var_met_est, values=list(METRICAS),
+                                       state="readonly", width=20)
+        self.cb_met_est.pack(side="left")
+        self.cb_met_est.bind("<<ComboboxSelected>>", lambda e: self._graficar_estadisticas())
         ttk.Button(fb, text="Exportar CSV", style="Secundario.TButton", command=self.exportar_csv).pack(side="right")
         ttk.Button(fb, text="Borrar historial", style="Secundario.TButton",
                    command=self.borrar_historial).pack(side="right", padx=4)
@@ -413,9 +427,10 @@ class App(tk.Tk):
         ttk.Combobox(fb, textvariable=self.var_heur_cmp, values=list(HEURISTICAS), state="readonly",
                      width=12).pack(side="left")
         self.var_met_cmp = tk.StringVar(value="Estados expandidos")
-        cb = ttk.Combobox(fb, textvariable=self.var_met_cmp, values=list(METRICAS), state="readonly", width=20)
-        cb.pack(side="right")
-        cb.bind("<<ComboboxSelected>>", lambda e: self._graficar_comparacion())
+        self.cb_met_cmp = ttk.Combobox(fb, textvariable=self.var_met_cmp, values=list(METRICAS),
+                                       state="readonly", width=20)
+        self.cb_met_cmp.pack(side="right")
+        self.cb_met_cmp.bind("<<ComboboxSelected>>", lambda e: self._graficar_comparacion())
         cols = ("alg", "exito", "long", "costo", "gen", "exp", "fr", "t", "ver")
         self.tree_cmp = ttk.Treeview(t, columns=cols, show="headings", height=6)
         for c, txt, w in zip(cols, ("Algoritmo", "Éxito", "Long.", "Costo", "Gener.", "Expand.", "Front.", "ms", "Verif."),
@@ -456,6 +471,26 @@ class App(tk.Tk):
 
     def _es_astar(self):
         return normalizar_nombre(self.var_alg.get()) == "A_ESTRELLA"
+
+    def _es_adversarial(self):
+        """Cierto si la tarea actual o el escenario cargado se refieren a Minimax/alfa-beta."""
+        if self._tarea() == "adversarial":
+            return True
+        return bool(self.escenario and (self.escenario.prueba or {}).get("modo") == "adversarial")
+
+    def _metricas_activas(self):
+        return METRICAS_ADV if self._es_adversarial() else METRICAS
+
+    def _sincronizar_metricas(self):
+        """Cambia las métricas disponibles según el contexto (búsqueda vs. adversarial)."""
+        vals = list(self._metricas_activas())
+        self.cb_met_est.configure(values=vals)
+        self.cb_met_cmp.configure(values=vals)
+        if self.var_met_est.get() not in vals:
+            self.var_met_est.set(vals[0])
+        if self.var_met_cmp.get() not in vals:
+            self.var_met_cmp.set(vals[0])
+        self._encabezados_cmp(adv=self._es_adversarial())
 
     def _actualizar_visibles(self):
         """Heurística y comparación de heurísticas solo con A*; k solo con Beam Search."""
@@ -523,6 +558,7 @@ class App(tk.Tk):
         self._resumen_escenario()
         self.log(f"Escenario cargado: {os.path.basename(ruta)} ({m.filas}x{m.columnas}, {len(esc.unidades)} unidades)")
         self.cambiar_modo(auto_ejecutar=True)
+        self._sincronizar_metricas()
 
     def _resumen_escenario(self):
         e, m, t = self.escenario, self.escenario.mapa, self.txt_esc
@@ -628,7 +664,9 @@ class App(tk.Tk):
         self._cambio_tarea()
 
     def _cambio_tarea(self):
+        self.capas, self.sel_unidad = {}, None
         self._mostrar_frame_tarea()
+        self._sincronizar_metricas()
         self.refrescar_tablero()
 
     def _mostrar_frame_tarea(self):
@@ -673,6 +711,10 @@ class App(tk.Tk):
             if self.sel_unidad and not self.reglas.es_terminal(self.estado):
                 capas["destinos"] = [a.destino for a in self.reglas.acciones_legales(self.estado)
                                      if a.unidad_id == self.sel_unidad and a.tipo == "MOVER"]
+        elif tarea == "adversarial":
+            capas["turno_marcador"] = True
+            capas["seleccion"] = self.sel_unidad
+            capas.update({k: v for k, v in self.capas.items() if k in ("destinos", "camino")})
         self.tablero.mostrar(self.escenario, self.estado, **capas)
         e = self.estado
         rec = f"lo lleva {e.portador}" if e.portador else f"en el suelo {e.recurso_pos}"
@@ -930,6 +972,9 @@ class App(tk.Tk):
         if not self.escenario:
             messagebox.showinfo("Sin escenario", "Primero carga un escenario JSON.")
             return
+        if self._es_adversarial():
+            self.comparar_adversariales()
+            return
         if self._tarea() != "busqueda":
             self.var_tarea.set(MODO_A_TAREA["busqueda"])
             self._cambio_tarea()
@@ -942,6 +987,47 @@ class App(tk.Tk):
         self._mostrar_comparacion(p)
         self._refrescar_estadisticas()
         self.nb.select(self.tab_cmp)
+
+    def comparar_adversariales(self):
+        """Compara únicamente MINIMAX y ALFA_BETA sobre el estado actual (sin buscar de ruta)."""
+        if not self.escenario:
+            return
+        if self.reglas.es_terminal(self.estado):
+            messagebox.showinfo("Fin de partida", "La partida ya terminó.")
+            return
+        if self._tarea() != "adversarial":
+            self.var_tarea.set(MODO_A_TAREA["adversarial"])
+            self._cambio_tarea()
+        self._sincronizar_metricas()
+        orden = self.var_orden_adv.get()
+        self.comparacion = [(self._correr_adversarial("MINIMAX", orden), None),
+                            (self._correr_adversarial("ALFA_BETA", orden), None)]
+        self._mostrar_comparacion_adversarial()
+        self._refrescar_estadisticas()
+        self.nb.select(self.tab_cmp)
+
+    def _mostrar_comparacion_adversarial(self):
+        self._encabezados_cmp(adv=True)
+        self.tree_cmp.delete(*self.tree_cmp.get_children())
+        for i, (r, _) in enumerate(self.comparacion):
+            self.tree_cmp.insert("", "end", iid=str(i), values=(
+                r.algoritmo, fmt(r.accion is not None), r.profundidad_maxima, fmt(r.valor),
+                r.nodos_generados, r.nodos_evaluados, r.nodos_podados, fmt(r.tiempo_ms), "—"))
+        accs = {r.algoritmo: _desc_accion(r.accion) for r, _ in self.comparacion}
+        mismo = accs.get("MINIMAX") == accs.get("ALFA_BETA")
+        r_mm = next(r for r, _ in self.comparacion if r.algoritmo == "MINIMAX")
+        r_ab = next(r for r, _ in self.comparacion if r.algoritmo == "ALFA_BETA")
+        self.lbl_cmp.config(text=(f"{'Misma acción' if mismo else 'Acciones distintas'} en ambos algoritmos: "
+                                  f"{accs.get('ALFA_BETA')}.  Valor: MM {r_mm.valor:.2f} / AB {r_ab.valor:.2f}.  "
+                                  f"Alfa-Beta evaluó {r_ab.nodos_evaluados} nodos vs {r_mm.nodos_evaluados} de Minimax "
+                                  f"(podados {r_ab.nodos_podados}).  Selecciona una fila para resaltar la acción."))
+        self.tree_cmp.selection_set("0")
+        self._graficar_comparacion()
+
+    def _encabezados_cmp(self, adv=False):
+        cols = COLS_ADV if adv else COLS_BUSQ
+        for c, txt in cols.items():
+            self.tree_cmp.heading(c, text=txt)
 
     def verificar(self):
         if not self.escenario or not getattr(self, "_ultimo", None):
@@ -957,17 +1043,42 @@ class App(tk.Tk):
         ok = all(c[1] for c in checks)
         messagebox.showinfo("Verificación", "Todas las comprobaciones pasaron." if ok else "Hay comprobaciones que fallaron.")
 
-    def _correr_adversarial(self):
+    def _correr_adversarial(self, alg=None, orden=None):
         if not self.escenario:
             return None
-        alg = self.var_alg_adv.get()
+        alg = alg or self.var_alg_adv.get()
         try:
             prof = int(self.var_prof.get())
         except ValueError:
             prof = 3
-        orden = self.var_orden_adv.get()
+        orden = orden or self.var_orden_adv.get()
         fn = alfa_beta if alg == "ALFA_BETA" else minimax
-        return fn(self.estado, self.reglas, self.escenario, profundidad_maxima=prof, orden_acciones=orden)
+        res = fn(self.estado, self.reglas, self.escenario, profundidad_maxima=prof, orden_acciones=orden)
+        self.historial.append({"escenario": os.path.basename(self.ruta_actual), "algoritmo": res.algoritmo,
+                               "exito": res.accion is not None, "longitud": None, "costo": None,
+                               "estados_generados": res.nodos_generados,
+                               "estados_expandidos": res.nodos_evaluados,
+                               "maximo_frontera": None, "tiempo_ms": round(res.tiempo_ms, 4),
+                               "origen": f"bando {self.estado.turno}",
+                               "destino": _desc_accion(res.accion),
+                               "parametros": json.dumps({"profundidad": res.profundidad_maxima,
+                                                          "orden": res.orden_acciones,
+                                                          "valor": round(res.valor, 4),
+                                                          "podados": res.nodos_podados}),
+                               "valor": res.valor, "nodos_podados": res.nodos_podados,
+                               "nodos_evaluados": res.nodos_evaluados,
+                               "nodos_generados": res.nodos_generados,
+                               "profundidad": res.profundidad_maxima, "orden": res.orden_acciones})
+        return res
+
+    def _resaltar_accion(self, res):
+        """Marca la unidad que mueve y la celda destino de la acción recomendada."""
+        if res.accion is None or res.accion.tipo != "MOVER":
+            self.capas, self.sel_unidad = {}, None
+        else:
+            self.sel_unidad = res.accion.unidad_id
+            self.capas = {"destinos": [res.accion.destino]}
+        self.refrescar_tablero()
 
     def _ejecutar_adversarial(self):
         if not self.escenario:
@@ -981,14 +1092,14 @@ class App(tk.Tk):
             return
 
         self._mostrar_resultado_adversarial(res)
+        self._refrescar_estadisticas()
         self.nb.select(self.tab_res)
         if res.accion:
-            desc = f"{res.accion.unidad_id} espera" if res.accion.tipo == "ESPERAR" else f"{res.accion.unidad_id} -> {res.accion.destino}"
+            desc = _desc_accion(res.accion)
             self._poner_estado(f"{res.algoritmo} (prof {res.profundidad_maxima}): recomendó {desc} (valor {res.valor:.2f}).")
-            if res.accion.tipo == "MOVER":
-                self.capas = {"destinos": [res.accion.destino]}
-                self.sel_unidad = res.accion.unidad_id
-                self.refrescar_tablero()
+            self._resaltar_accion(res)
+        else:
+            self._poner_estado(f"{res.algoritmo}: no se propuso ninguna acción.")
 
     def _evaluar_y_aplicar_adversarial(self):
         if not self.escenario:
@@ -1000,8 +1111,8 @@ class App(tk.Tk):
         res = self._correr_adversarial()
         if res and res.accion:
             self._aplicar_accion(res.accion)
-            desc = f"{res.accion.unidad_id} espera" if res.accion.tipo == "ESPERAR" else f"{res.accion.unidad_id} -> {res.accion.destino}"
-            self._poner_estado(f"Jugada aplicada: {desc}.")
+            self._refrescar_estadisticas()
+            self._poner_estado(f"Jugada aplicada: {_desc_accion(res.accion)}.")
 
     def _mostrar_resultado_adversarial(self, res):
         self.tree_res.delete(*self.tree_res.get_children())
@@ -1037,6 +1148,7 @@ class App(tk.Tk):
         self.heuristica_cmp = {}
         for t in (self.tree_res, self.tree_cmp):
             t.delete(*t.get_children())
+        self._encabezados_cmp(adv=False)
         self.txt_res.delete("1.0", "end")
         self.lbl_cmp.config(text="Selecciona una fila para ver su camino en el mapa.")
         self._graficar_comparacion()
@@ -1068,6 +1180,7 @@ class App(tk.Tk):
         t.insert("end", "{\n" + ",\n".join(f'  "{k}": {json.dumps(v, ensure_ascii=False)}' for k, v in d.items()) + "\n}")
 
     def _mostrar_comparacion(self, p):
+        self._encabezados_cmp(adv=False)
         self.tree_cmp.delete(*self.tree_cmp.get_children())
         for i, (r, chk) in enumerate(self.comparacion):
             ver = "—" if not r.exito else ("OK" if all(c[1] for c in chk) else "FALLA")
@@ -1095,28 +1208,39 @@ class App(tk.Tk):
         if not sel or not self.comparacion:
             return
         r, _ = self.comparacion[int(sel[0])]
+        if not hasattr(r, "camino"):  # resultado adversarial: resalta la acción en lugar de un camino
+            self._resaltar_accion(r)
+            self._poner_estado(f"Acción recomendada por {r.algoritmo}: {_desc_accion(r.accion)}.")
+            return
         self.capas = {"camino": r.camino, "explorados": r.explorados}
         self.refrescar_tablero()
         self._poner_estado(f"Mostrando el camino de {r.algoritmo}.")
 
     def _graficar_comparacion(self):
-        clave = METRICAS[self.var_met_cmp.get()]
-        datos = [(r.algoritmo, getattr(r, clave)) for r, _ in self.comparacion]
-        barras(self.cv_cmp, datos, f"Comparación: {self.var_met_cmp.get()}")
+        vals = self._metricas_activas()
+        clave = vals.get(self.var_met_cmp.get()) or list(vals.values())[0]
+        datos = [(r.algoritmo, getattr(r, clave, None)) for r, _ in self.comparacion]
+        titulo = ("Minimax vs Alfa-Beta" if self._es_adversarial() else "Comparación") + f": {self.var_met_cmp.get()}"
+        barras(self.cv_cmp, datos, titulo)
 
     # ------------------------------------------------------------------ estadísticas
     def _refrescar_estadisticas(self):
+        adv = any("nodos_evaluados" in h for h in self.historial)
         self.tree_hist.delete(*self.tree_hist.get_children())
         for i, h in enumerate(self.historial, 1):
+            ruta = f"{fmt(h['origen'])}→{fmt(h['destino'])}"
+            if "nodos_evaluados" in h:
+                ruta = f"prof {h.get('profundidad')} · {fmt(h.get('valor'))}"
             self.tree_hist.insert("", "end", values=(i, h["algoritmo"], fmt(h["exito"]), fmt(h["longitud"]),
                                                      fmt(h["costo"]), h["estados_generados"], h["estados_expandidos"],
-                                                     h["maximo_frontera"], fmt(h["tiempo_ms"]),
-                                                     f"{h['origen']}→{h['destino']}"))
+                                                     fmt(h["maximo_frontera"]), fmt(h["tiempo_ms"]), ruta))
         self.tree_hist.yview_moveto(1)
         self.tree_resumen.delete(*self.tree_resumen.get_children())
         for alg, hs in self._agrupar().items():
             ex = [h for h in hs if h["exito"]]
-            prom = lambda k, L: sum(h[k] for h in L) / len(L) if L else None
+            def prom(k, L):
+                vals = [h[k] for h in L if h.get(k) is not None]
+                return sum(vals) / len(vals) if vals else None
             self.tree_resumen.insert("", "end", values=(alg, len(hs), fmt(round(100 * len(ex) / len(hs), 1)),
                                                         fmt(prom("costo", ex)), fmt(prom("estados_expandidos", hs)),
                                                         fmt(prom("tiempo_ms", hs))))
@@ -1129,7 +1253,8 @@ class App(tk.Tk):
         return g
 
     def _graficar_estadisticas(self):
-        clave = METRICAS[self.var_met_est.get()]
+        vals = self._metricas_activas()
+        clave = vals.get(self.var_met_est.get()) or list(vals.values())[0]
         if self._es_astar() and self.heuristica_cmp:
             datos = [(h, getattr(self.heuristica_cmp[h], clave)) for h in HEURISTICAS
                      if self.var_heur_est.get(h) and h in self.heuristica_cmp]
@@ -1137,9 +1262,12 @@ class App(tk.Tk):
             return
         datos = []
         for alg, hs in self._agrupar().items():
-            vals = [h[clave] for h in hs if h[clave] is not None]
-            datos.append((alg, sum(vals) / len(vals) if vals else None))
-        barras(self.cv_est, datos, f"Promedio por algoritmo: {self.var_met_est.get()}")
+            vv = [h[clave] for h in hs if h.get(clave) is not None]
+            datos.append((alg, sum(vv) / len(vv) if vv else None))
+        titulo = "Promedio por algoritmo"
+        if self._es_adversarial():
+            titulo = "Minimax vs Alfa-Beta"
+        barras(self.cv_est, datos, f"{titulo}: {self.var_met_est.get()}")
 
     def _comparar_heuristicas(self, p, res_actual=None):
         """Ejecuta A* con cada heurística y deja sus métricas en la pestaña Estadísticas."""
@@ -1173,8 +1301,13 @@ class App(tk.Tk):
         ruta = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")],
                                             initialfile="resultados.csv")
         if ruta:
+            campos = list(self.historial[0])
+            for h in self.historial:
+                for k in h:
+                    if k not in campos:
+                        campos.append(k)
             with open(ruta, "w", newline="", encoding="utf-8") as f:
-                w = csv.DictWriter(f, fieldnames=list(self.historial[0]))
+                w = csv.DictWriter(f, fieldnames=campos)
                 w.writeheader()
                 w.writerows(self.historial)
             self._poner_estado(f"Historial exportado a {ruta}")
